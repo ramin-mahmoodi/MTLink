@@ -11,29 +11,25 @@
 
 ---
 
-## فارسی
+<h2 dir="rtl" align="right">فارسی</h2>
 
-**برنامهٔ MTLink** یک مدیر Native Android برای دریافت، سامان‌دهی و آزمون پراکسی‌های عمومی Telegram است. پروژه با Kotlin و Viewهای استاندارد Android نوشته شده تا مسیر اصلی برنامه، ساده، کم‌وابستگی و قابل نگه‌داری بماند. رابط کاربری Dark Mode است و از فارسی با چیدمان RTL واقعی، در کنار زبان انگلیسی، پشتیبانی می‌کند.
+<p dir="rtl" align="right"><strong>برنامهٔ MTLink</strong> یک مدیر Native Android برای دریافت، سامان‌دهی و آزمون پراکسی‌های عمومی Telegram است. پروژه با Kotlin و Viewهای استاندارد Android نوشته شده تا مسیر اصلی برنامه، ساده، کم‌وابستگی و قابل نگه‌داری بماند. رابط کاربری Dark Mode است و از فارسی با چیدمان RTL واقعی، در کنار زبان انگلیسی، پشتیبانی می‌کند.</p>
 
-### قابلیت‌های اصلی
+<h3 dir="rtl" align="right">قابلیت‌های اصلی</h3>
 
-| حوزه | امکانات |
-|---|---|
-| دریافت | استخراج پراکسی‌های **MTProto** و **SOCKS5** از منبع‌های Text، JSON و HTML؛ حذف موارد تکراری و ذخیره‌سازی محلی. |
-| منابع | فعال یا غیرفعال‌سازی هر منبع، دریافت تک‌منبع، مشاهدهٔ خطا و خروجی آخر، سقف مستقل برای هر منبع و اعمال سقف یک‌جا برای همهٔ منابع. |
-| آزمون | آزمون مستقیم اتصال، ثبت latency و دریافت کد کشور IP در زمان آزمون. |
-| استفاده | کپی لینک، اشتراک‌گذاری، باز کردن مستقیم در Telegram، QR Code و علاقه‌مندی‌ها. |
-| تجربهٔ کاربری | Dark Mode، فارسی/انگلیسی، RTL، actionهای swipe و پیشرفت درون‌صفحه‌ای برای عملیات طولانی. |
+<p dir="rtl" align="right"><strong>دریافت.</strong> استخراج پراکسی‌های MTProto و SOCKS5 از منبع‌های Text، JSON و HTML؛ حذف موارد تکراری و ذخیره‌سازی محلی.</p>
 
-### دامنه و حریم خصوصی
+<p dir="rtl" align="right"><strong>منابع.</strong> فعال یا غیرفعال‌سازی هر منبع، دریافت تک‌منبع، مشاهدهٔ خطا و خروجی آخر، سقف مستقل برای هر منبع و اعمال سقف یک‌جا برای همهٔ منابع.</p>
 
-MTLink ارائه‌دهندهٔ پراکسی نیست و فقط منبع‌های عمومی تعریف‌شده در برنامه را می‌خواند. اطلاعات پراکسی‌ها، وضعیت آزمون و تنظیمات برنامه به‌صورت محلی روی دستگاه نگه‌داری می‌شوند. آزمون دوره‌ای نیز فقط پس از فعال‌سازی صریح کاربر اجرا می‌شود.
+<p dir="rtl" align="right"><strong>آزمون.</strong> آزمون مستقیم اتصال، ثبت latency و دریافت کد کشور IP در زمان آزمون.</p>
 
-### محتوای مخزن
+<p dir="rtl" align="right"><strong>استفاده.</strong> کپی لینک، اشتراک‌گذاری، باز کردن مستقیم در Telegram، QR Code و علاقه‌مندی‌ها.</p>
 
-| موجود است | عمداً وجود ندارد |
-|---|---|
-| سورس Kotlin، منابع Android، Gradle Wrapper و آزمون‌های واحد | APK/AAB، خروجی build، cacheهای Gradle، کلید امضا، keystore، تنظیمات محلی، دادهٔ حساس و workflow خودکار build/release |
+<p dir="rtl" align="right"><strong>تجربهٔ کاربری.</strong> Dark Mode، فارسی/انگلیسی، RTL، actionهای swipe و پیشرفت درون‌صفحه‌ای برای عملیات طولانی.</p>
+
+<h3 dir="rtl" align="right">دامنه و حریم خصوصی</h3>
+
+<p dir="rtl" align="right">برنامهٔ MTLink ارائه‌دهندهٔ پراکسی نیست و فقط منبع‌های عمومی تعریف‌شده در برنامه را می‌خواند. اطلاعات پراکسی‌ها، وضعیت آزمون و تنظیمات برنامه به‌صورت محلی روی دستگاه نگه‌داری می‌شوند. آزمون دوره‌ای نیز فقط پس از فعال‌سازی صریح کاربر اجرا می‌شود.</p>
 
 ---
 
@@ -54,9 +50,3 @@ MTLink ارائه‌دهندهٔ پراکسی نیست و فقط منبع‌ها
 ### Scope and privacy
 
 MTLink does not provide proxies. It reads only the public sources configured within the application. Proxy data, test status, and preferences are stored locally on the device. Periodic checks run only after an explicit user opt-in.
-
-### Repository contents
-
-| Included | Intentionally excluded |
-|---|---|
-| Kotlin source, Android resources, Gradle Wrapper, and unit tests | APK/AAB artifacts, build output, Gradle caches, signing keys, keystores, local configuration, sensitive data, and automated build/release workflows |
