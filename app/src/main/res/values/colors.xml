@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="mt_background">#FF0B0F14</color>
+    <color name="mt_surface">#FF121923</color>
+    <color name="mt_surface_soft">#FF182230</color>
+    <color name="mt_surface_raised">#FF172332</color>
+    <color name="mt_surface_deep">#FF0F1620</color>
+    <color name="mt_text">#FFF2F6FC</color>
+    <color name="mt_muted">#FF93A3B8</color>
+    <color name="mt_primary">#FF6C8FFF</color>
+    <color name="mt_primary_soft">#FF21345A</color>
+    <color name="mt_primary_light">#FFC3D0FF</color>
+    <color name="mt_success">#FF38D39F</color>
+    <color name="mt_border">#FF263242</color>
+    <color name="mt_danger">#FFFF7185</color>
+</resources>
