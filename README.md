@@ -199,7 +199,7 @@ app/src/main/java/ir/mtlink/client/
 
 ### 🔒 دامنه و حریم خصوصی
 
-<ul>
+<ul dir="rtl" align="right">
   <li>MTLink <strong>هیچ پراکسی‌ای تولید نمی‌کند</strong> — فقط منابع عمومی از پیش تعریف‌شده را می‌خواند</li>
   <li><strong>هیچ داده‌ای به سرور ارسال نمی‌شود</strong> — همه اطلاعات فقط روی دستگاه شما ذخیره می‌شود</li>
   <li>آزمایش دوره‌ای تنها زمانی اجرا می‌شود که کاربر <strong>صریحاً</strong> آن را فعال کرده باشد</li>
@@ -212,7 +212,7 @@ app/src/main/java/ir/mtlink/client/
 
 **پیش‌نیازها:**
 
-<ul>
+<ul dir="rtl" align="right">
   <li>Android Studio Hedgehog یا جدیدتر</li>
   <li>JDK 17+</li>
   <li>دستگاه یا شبیه‌ساز با Android 7.0 (API 24) یا بالاتر</li>
