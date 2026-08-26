@@ -35,7 +35,7 @@ jobs:
             -keyalg RSA -keysize 4096 -validity 10000 \
             -dname "CN=MTLink Temporary Release, OU=GitHub Actions, O=MTLink, C=IR"
           cat > keystore.properties <<EOF
-          storeFile=app/release.jks
+          storeFile=release.jks
           storePassword=$SIGNING_PASSWORD
           keyAlias=mtlink
           keyPassword=$SIGNING_PASSWORD
