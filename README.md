@@ -114,14 +114,6 @@ Then:
 
 ---
 
-### 🤝 Contributing
-
-1. Fork the repository
-2. Create a new branch: `git checkout -b feature/your-feature`
-3. Commit your changes: `git commit -m 'Add: your feature'`
-4. Push the branch: `git push origin feature/your-feature`
-5. Open a Pull Request
-
 ---
 
 ### 📄 License
@@ -207,19 +199,24 @@ app/src/main/java/ir/mtlink/client/
 
 ### 🔒 دامنه و حریم خصوصی
 
-- MTLink **هیچ پراکسی‌ای تولید نمی‌کند** — فقط منابع عمومی از پیش تعریف‌شده را می‌خواند
-- **هیچ داده‌ای به سرور ارسال نمی‌شود** — همه اطلاعات فقط روی دستگاه شما ذخیره می‌شود
-- آزمایش دوره‌ای تنها زمانی اجرا می‌شود که کاربر **صریحاً** آن را فعال کرده باشد
-- برای تشخیص کشور، IP پراکسی با سرویس‌های عمومی مثل `ipwho.is` بررسی می‌شود (بدون ذخیره‌سازی)
+<ul>
+  <li>MTLink <strong>هیچ پراکسی‌ای تولید نمی‌کند</strong> — فقط منابع عمومی از پیش تعریف‌شده را می‌خواند</li>
+  <li><strong>هیچ داده‌ای به سرور ارسال نمی‌شود</strong> — همه اطلاعات فقط روی دستگاه شما ذخیره می‌شود</li>
+  <li>آزمایش دوره‌ای تنها زمانی اجرا می‌شود که کاربر <strong>صریحاً</strong> آن را فعال کرده باشد</li>
+  <li>برای تشخیص کشور، IP پراکسی با سرویس‌های عمومی مثل <code>ipwho.is</code> بررسی می‌شود (بدون ذخیره‌سازی)</li>
+</ul>
 
 ---
 
 ### 📦 پیش‌نیازها و ساخت
 
 **پیش‌نیازها:**
-- Android Studio Hedgehog یا جدیدتر
-- JDK 17+
-- دستگاه یا شبیه‌ساز با Android 7.0 (API 24) یا بالاتر
+
+<ul>
+  <li>Android Studio Hedgehog یا جدیدتر</li>
+  <li>JDK 17+</li>
+  <li>دستگاه یا شبیه‌ساز با Android 7.0 (API 24) یا بالاتر</li>
+</ul>
 
 **ساخت:**
 
@@ -259,15 +256,5 @@ keyPassword=your_key_password
 ```
 
 </div>
-
----
-
-### 🤝 مشارکت در توسعه
-
-۱. ریپوزیتوری را Fork کنید  
-۲. یک Branch جدید بسازید: `git checkout -b feature/your-feature`  
-۳. تغییرات را Commit کنید: `git commit -m 'Add: your feature'`  
-۴. Branch را Push کنید: `git push origin feature/your-feature`  
-۵. یک Pull Request باز کنید  
 
 </div>
