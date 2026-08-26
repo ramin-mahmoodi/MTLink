@@ -4,8 +4,9 @@ import android.graphics.Color
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.LinearLayout
-import android.widget.Switch
 import android.widget.TextView
+import androidx.appcompat.widget.SwitchCompat
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import androidx.core.content.ContextCompat
 
@@ -16,7 +17,19 @@ class SourceAdapter(
     private val onEdit: (SourceDefinition) -> Unit,
 ) : RecyclerView.Adapter<SourceAdapter.SourceHolder>() {
     private var items: List<SourceDefinition> = emptyList()
-    fun submit(value: List<SourceDefinition>) { items = value; notifyDataSetChanged() }
+    fun submit(value: List<SourceDefinition>) {
+        val previous = items
+        val next = value.toList()
+        // fixed: DiffUtil avoids redrawing every source card for a small update.
+        val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
+            override fun getOldListSize() = previous.size
+            override fun getNewListSize() = next.size
+            override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int) = previous[oldItemPosition].id == next[newItemPosition].id
+            override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int) = previous[oldItemPosition] == next[newItemPosition]
+        })
+        items = next
+        diff.dispatchUpdatesTo(this)
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SourceHolder {
         val context = parent.context
@@ -51,7 +64,8 @@ class SourceAdapter(
             setPadding(dp(8), 0, dp(8), 0)
             background = ProxyAdapter.rounded(ContextCompat.getColor(context, R.color.mt_surface_soft), ContextCompat.getColor(context, R.color.mt_primary), 12)
         }
-        val switch = Switch(context)
+        // fixed: SwitchCompat replaces the deprecated platform Switch widget.
+        val switch = SwitchCompat(context)
         row.addView(copy)
         row.addView(limit, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(38)).apply { marginEnd = dp(6) })
         row.addView(switch)
@@ -85,7 +99,7 @@ class SourceAdapter(
     }
 
     override fun getItemCount() = items.size
-    class SourceHolder(view: LinearLayout, val title: TextView, val detail: TextView, val status: TextView, val limit: TextView, val toggle: Switch) : RecyclerView.ViewHolder(view)
+    class SourceHolder(view: LinearLayout, val title: TextView, val detail: TextView, val status: TextView, val limit: TextView, val toggle: SwitchCompat) : RecyclerView.ViewHolder(view)
 
     private fun text(context: android.content.Context, size: Int, color: Int, bold: Boolean) = TextView(context).apply {
         layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)

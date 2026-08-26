@@ -14,6 +14,7 @@ object PeriodicTestScheduler {
         alarm.cancel(pending)
         if (!prefs.periodicTestEnabled) return
         val interval = prefs.periodicTestMinutes.coerceAtLeast(15) * 60_000L
+        // fixed: inexact repeating avoids the Android 12+ exact-alarm permission requirement.
         alarm.setInexactRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + interval, interval, pending)
     }
 

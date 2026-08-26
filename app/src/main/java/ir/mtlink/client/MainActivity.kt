@@ -1,6 +1,5 @@
 package ir.mtlink.client
 
-import android.app.Activity
 import android.app.AlertDialog
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -21,10 +20,12 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
-import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import android.widget.HorizontalScrollView
+import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.widget.SwitchCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.core.view.WindowCompat
@@ -33,7 +34,7 @@ import androidx.core.view.WindowInsetsCompat
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 
-class MainActivity : Activity() {
+class MainActivity : ComponentActivity() {
     private lateinit var store: MTLinkStore
     private lateinit var content: FrameLayout
     private lateinit var nav: LinearLayout
@@ -50,13 +51,14 @@ class MainActivity : Activity() {
     private var sourceActiveCountText: TextView? = null
     private var sourceIssueCountText: TextView? = null
     private val sourceFilterChips = mutableMapOf<SourceFilter, TextView>()
-    private var testProgressActive = false
-    private var testProgressTotal = 0
-    private var testProgressCompleted = 0
-    private var fetchProgressActive = false
-    private var fetchProgressTotal = 0
-    private var fetchProgressCompleted = 0
-    private var fetchProgressStatus = ""
+    // fixed: progress state is safely shared between IO workers and the UI thread.
+    @Volatile private var testProgressActive = false
+    private val testProgressTotal = AtomicInteger(0)
+    private val testProgressCompleted = AtomicInteger(0)
+    @Volatile private var fetchProgressActive = false
+    private val fetchProgressTotal = AtomicInteger(0)
+    private val fetchProgressCompleted = AtomicInteger(0)
+    @Volatile private var fetchProgressStatus = ""
     private var homeProgressPanel: LinearLayout? = null
     private var homeProgressHeadline: TextView? = null
     private var homeProgressTrack: FrameLayout? = null
@@ -75,19 +77,24 @@ class MainActivity : Activity() {
         store = MTLinkStore(this)
         ui = UiText(store.appPreferences().language)
         setContentView(buildRoot())
+        // fixed: predictive back uses AndroidX's back dispatcher rather than deprecated onBackPressed().
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                when {
+                    ::loadingOverlay.isInitialized && loadingOverlay.visibility == View.VISIBLE -> Unit
+                    currentTab != Tab.HOME -> showTab(Tab.HOME)
+                    else -> {
+                        isEnabled = false
+                        onBackPressedDispatcher.onBackPressed()
+                        isEnabled = true
+                    }
+                }
+            }
+        })
         showTab(Tab.HOME)
     }
 
     override fun onDestroy() { io.shutdownNow(); super.onDestroy() }
-
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        when {
-            ::loadingOverlay.isInitialized && loadingOverlay.visibility == View.VISIBLE -> Unit
-            currentTab != Tab.HOME -> showTab(Tab.HOME)
-            else -> super.onBackPressed()
-        }
-    }
 
     private fun buildRoot(): View {
         val rootDirection = if (ui.isRtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
@@ -838,36 +845,36 @@ class MainActivity : Activity() {
     }
     private fun startTestProgress(total: Int) {
         testProgressActive = true
-        testProgressTotal = total
-        testProgressCompleted = 0
+        testProgressTotal.set(total)
+        testProgressCompleted.set(0)
         homeProgressPanel?.visibility = View.VISIBLE
         renderTestProgress()
     }
     private fun updateTestProgress(completed: Int) {
-        testProgressCompleted = completed.coerceAtMost(testProgressTotal)
+        testProgressCompleted.set(completed.coerceIn(0, testProgressTotal.get()))
         renderTestProgress()
     }
     private fun finishTestProgress() {
-        testProgressCompleted = testProgressTotal
+        testProgressCompleted.set(testProgressTotal.get())
         renderTestProgress()
         testProgressActive = false
         hideHomeProgressIfIdle()
     }
     private fun startFetchProgress(total: Int) {
         fetchProgressActive = true
-        fetchProgressTotal = total
-        fetchProgressCompleted = 0
+        fetchProgressTotal.set(total)
+        fetchProgressCompleted.set(0)
         fetchProgressStatus = t("در حال آماده‌سازی منابع", "Preparing sources")
         homeProgressPanel?.visibility = View.VISIBLE
         renderTestProgress()
     }
     private fun updateFetchProgress(completed: Int, sourceTitle: String) {
-        fetchProgressCompleted = completed.coerceAtMost(fetchProgressTotal)
+        fetchProgressCompleted.set(completed.coerceIn(0, fetchProgressTotal.get()))
         fetchProgressStatus = sourceTitle
         renderTestProgress()
     }
     private fun finishFetchProgress() {
-        fetchProgressCompleted = fetchProgressTotal
+        fetchProgressCompleted.set(fetchProgressTotal.get())
         renderTestProgress()
         fetchProgressActive = false
         hideHomeProgressIfIdle()
@@ -876,8 +883,8 @@ class MainActivity : Activity() {
         if (!testProgressActive && !fetchProgressActive) homeProgressPanel?.visibility = View.GONE
     }
     private fun renderTestProgress() {
-        val total = if (fetchProgressActive) fetchProgressTotal.coerceAtLeast(1) else testProgressTotal.coerceAtLeast(1)
-        val completed = if (fetchProgressActive) fetchProgressCompleted else testProgressCompleted
+        val total = if (fetchProgressActive) fetchProgressTotal.get().coerceAtLeast(1) else testProgressTotal.get().coerceAtLeast(1)
+        val completed = if (fetchProgressActive) fetchProgressCompleted.get() else testProgressCompleted.get()
         val fraction = completed.toFloat() / total.toFloat()
         homeProgressHeadline?.text = progressHeadline()
         homeProgressText?.text = "$completed/$total · ${(fraction * 100).toInt()}%"
@@ -890,8 +897,8 @@ class MainActivity : Activity() {
             ?: t("در حال دریافت منابع", "Fetching sources")
     } else t("در حال آزمون پراکسی‌ها", "Testing proxies")
     private fun progressCopy(): String {
-        val total = if (fetchProgressActive) fetchProgressTotal else testProgressTotal
-        val completed = if (fetchProgressActive) fetchProgressCompleted else testProgressCompleted
+        val total = if (fetchProgressActive) fetchProgressTotal.get() else testProgressTotal.get()
+        val completed = if (fetchProgressActive) fetchProgressCompleted.get() else testProgressCompleted.get()
         return "$completed/$total · ${if (total == 0) 0 else (completed * 100 / total)}%"
     }
     private fun primary(text: String, click: () -> Unit): TextView = label(text, 15, Color.WHITE, true).apply { gravity = Gravity.CENTER; setPadding(dp(18), 0, dp(18), 0); background = gradient("#7697FF", "#536ECA", 16); setOnClickListener { click() } }
@@ -903,7 +910,8 @@ class MainActivity : Activity() {
         copy.addView(label(title, 15, color(R.color.mt_text), true).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
         copy.addView(label(body, 12, color(R.color.mt_muted), false).apply { maxLines = 2; setPadding(0, dp(4), 0, 0) })
         addView(copy, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        addView(Switch(context).apply { isChecked = checked; setOnCheckedChangeListener { _, value -> changed(value) } })
+        // fixed: SwitchCompat replaces the deprecated platform Switch widget.
+        addView(SwitchCompat(context).apply { isChecked = checked; setOnCheckedChangeListener { _, value -> changed(value) } })
     }
     private fun buttonCard(title: String, body: String, danger: Boolean = false, click: () -> Unit) = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; minimumHeight = dp(80); background = cardBackground(20); setPadding(dp(18), dp(16), dp(18), dp(16)); applyUiDirection(this); setOnClickListener { click() }; addView(label(title, 15, if (danger) color(R.color.mt_danger) else color(R.color.mt_text), true)); addView(label(body, 12, color(R.color.mt_muted), false).apply { maxLines = 2; setPadding(0, dp(5), 0, 0) }); layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(12) } }
     private fun divider() = View(this).apply { setBackgroundColor(color(R.color.mt_border)); layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1)).apply { marginStart = dp(15); marginEnd = dp(15) } }

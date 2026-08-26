@@ -14,6 +14,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 
 enum class SwipeAction { OPEN_TELEGRAM, SHARE, COPY, DELETE, QR, FAVORITE }
@@ -30,7 +31,19 @@ class ProxyAdapter(
     private val compactReveal = dp(96).toFloat()
     private val expandedReveal = dp(160).toFloat()
 
-    fun submit(value: List<ProxyRecord>) { items = value; notifyDataSetChanged() }
+    fun submit(value: List<ProxyRecord>) {
+        val previous = items
+        val next = value.toList()
+        // fixed: DiffUtil preserves unchanged proxy cards and their RecyclerView animations.
+        val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
+            override fun getOldListSize() = previous.size
+            override fun getNewListSize() = next.size
+            override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int) = previous[oldItemPosition].id == next[newItemPosition].id
+            override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int) = previous[oldItemPosition] == next[newItemPosition]
+        })
+        items = next
+        diff.dispatchUpdatesTo(this)
+    }
     fun updateItem(updated: ProxyRecord) {
         val index = items.indexOfFirst { it.id == updated.id }
         if (index < 0) return

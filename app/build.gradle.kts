@@ -1,9 +1,10 @@
+import java.util.Properties
+
+// fixed: imports must precede the plugins block in Kotlin DSL scripts.
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
-
-import java.util.Properties
 
 val releaseProperties = Properties()
 val releasePropertiesFile = rootProject.file("keystore.properties")
@@ -19,8 +20,8 @@ android {
         applicationId = "ir.mtlink.client"
         minSdk = 24
         targetSdk = 35
-        versionCode = 24
-        versionName = "1.3.12"
+        versionCode = 25
+        versionName = "1.3.13"
     }
 
     signingConfigs {
@@ -87,6 +88,8 @@ android {
 
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
+    implementation("androidx.activity:activity-ktx:1.9.0")
+    implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.recyclerview:recyclerview:1.4.0") {
         exclude(group = "androidx.profileinstaller", module = "profileinstaller")
     }

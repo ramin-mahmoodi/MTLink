@@ -23,7 +23,7 @@ object ProxyEngine {
         return try {
             val code = connection.responseCode
             if (code !in 200..299) throw IllegalStateException("HTTP $code")
-            if (connection.contentLengthLong > MAX_RESPONSE_CHARS) throw IllegalStateException("پاسخ منبع بیش از حد بزرگ است")
+            // fixed: the streaming cap below also covers chunked responses without Content-Length.
             val body = readLimitedBody(connection.inputStream.bufferedReader())
             val type = if (source.type == SourceType.AUTO) detectType(connection.contentType, body) else source.type
             val extracted = if (type == SourceType.JSON) parseJson(body, limit) else parseLinks(body, limit)
