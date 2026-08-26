@@ -13,38 +13,42 @@
 
 <h2 dir="rtl" align="right">فارسی</h2>
 
-<p dir="rtl" align="right"><strong>برنامهٔ MTLink</strong> یک مدیر Native Android برای دریافت، سامان‌دهی و آزمون پراکسی‌های عمومی Telegram است. پروژه با Kotlin و Viewهای استاندارد Android نوشته شده تا مسیر اصلی برنامه، ساده، کم‌وابستگی و قابل نگه‌داری بماند. رابط کاربری Dark Mode است و از فارسی با چیدمان RTL واقعی، در کنار زبان انگلیسی، پشتیبانی می‌کند.</p>
+<p dir="rtl" align="right">
+<strong>MTLink</strong> یک اپ اندرویدی بومی برای جمع‌آوری، مرتب‌سازی و آزمایش پراکسی‌های عمومی تلگرام است. با <bdi>Kotlin</bdi> و Viewهای استاندارد اندروید نوشته شده، بدون وابستگی اضافه و با تمرکز روی سادگی و نگهداری‌پذیری کد. رابط کاربری تیره است و از فارسی (با چیدمان درست RTL) و انگلیسی پشتیبانی می‌کند.
+</p>
 
 <h3 dir="rtl" align="right">قابلیت‌های اصلی</h3>
 
-| امکانات | حوزه |
-| ---: | ---: |
-| &rlm;استخراج پراکسی‌های MTProto و SOCKS5 از منبع‌های Text، JSON و HTML؛ حذف موارد تکراری و ذخیره‌سازی محلی. | &rlm;دریافت |
-| &rlm;فعال یا غیرفعال‌سازی هر منبع، دریافت تک‌منبع، مشاهدهٔ خطا و خروجی آخر، سقف مستقل برای هر منبع و اعمال سقف یک‌جا برای همهٔ منابع. | &rlm;منابع |
-| &rlm;آزمون مستقیم اتصال، ثبت latency و دریافت کد کشور IP در زمان آزمون. | &rlm;آزمون |
-| &rlm;کپی لینک، اشتراک‌گذاری، باز کردن مستقیم در Telegram، QR Code و علاقه‌مندی‌ها. | &rlm;استفاده |
-| &rlm;Dark Mode، فارسی/انگلیسی، RTL، actionهای swipe و پیشرفت درون‌صفحه‌ای برای عملیات طولانی. | &rlm;تجربهٔ کاربری |
+<div dir="rtl" align="right">
+
+- **دریافت پراکسی:** استخراج پراکسی‌های <bdi>MTProto</bdi> و <bdi>SOCKS5</bdi> از منابع متنی، <bdi>JSON</bdi> و <bdi>HTML</bdi>، همراه با حذف خودکار موارد تکراری و ذخیره‌سازی محلی.
+- **مدیریت منابع:** فعال یا غیرفعال کردن هر منبع به‌طور جداگانه، دریافت تکی از هر منبع، مشاهده‌ی آخرین نتیجه و خطای هر منبع، و تعیین سقف مجزا برای هر منبع یا یک سقف مشترک برای همه.
+- **آزمایش اتصال:** تست مستقیم هر پراکسی، ثبت تأخیر (<bdi>latency</bdi>) و تشخیص کد کشور IP در لحظه‌ی آزمایش.
+- **استفاده‌ی روزمره:** کپی لینک، اشتراک‌گذاری، باز کردن مستقیم در تلگرام، ساخت <bdi>QR Code</bdi> و افزودن به علاقه‌مندی‌ها.
+- **تجربه‌ی کاربری:** حالت تیره، پشتیبانی همزمان از فارسی و انگلیسی با RTL واقعی، اکشن‌های swipe، و نوار پیشرفت درون‌صفحه برای عملیات‌های طولانی.
+
+</div>
 
 <h3 dir="rtl" align="right">دامنه و حریم خصوصی</h3>
 
-<p dir="rtl" align="right">برنامهٔ MTLink ارائه‌دهندهٔ پراکسی نیست و فقط منبع‌های عمومی تعریف‌شده در برنامه را می‌خواند. اطلاعات پراکسی‌ها، وضعیت آزمون و تنظیمات برنامه به‌صورت محلی روی دستگاه نگه‌داری می‌شوند. آزمون دوره‌ای نیز فقط پس از فعال‌سازی صریح کاربر اجرا می‌شود.</p>
+<p dir="rtl" align="right">
+MTLink خودش هیچ پراکسی‌ای تولید نمی‌کند؛ فقط منابع عمومی‌ای را می‌خواند که در برنامه تعریف شده‌اند. اطلاعات پراکسی‌ها، وضعیت آزمایش‌ها و تنظیمات برنامه فقط روی خود دستگاه ذخیره می‌شوند. آزمایش دوره‌ای هم تنها زمانی اجرا می‌شود که کاربر آن را صریحاً فعال کرده باشد.
+</p>
 
 ---
 
 ## English
 
-**MTLink** is a native Android manager for collecting, organizing, and testing public Telegram proxies. It is written with Kotlin and standard Android Views to keep the core experience lightweight, dependency-conscious, and maintainable. The interface uses a dark visual system and supports both English and Persian with true RTL layout.
+**MTLink** is a native Android app for collecting, organizing, and testing public Telegram proxies. It's built with Kotlin and plain Android Views — no extra dependencies, just a simple, maintainable codebase. The UI uses a dark theme and works in both English and Persian, with proper RTL layout.
 
-### Core capabilities
+### Core features
 
-| Area | What it provides |
-|---|---|
-| Fetching | Extracts **MTProto** and **SOCKS5** proxies from Text, JSON, and HTML sources; de-duplicates and stores results locally. |
-| Sources | Per-source enablement, single-source fetches, last result and error visibility, individual source limits, and one-tap limits for every source. |
-| Testing | Direct connectivity checks, latency reporting, and IP country-code lookup during testing. |
-| Use | Copy, share, open in Telegram, QR codes, and favorites. |
-| Experience | Dark mode, English/Persian language support, RTL layout, swipe actions, and in-page progress for longer operations. |
+- **Fetching:** Pulls MTProto and SOCKS5 proxies from Text, JSON, and HTML sources, removes duplicates, and stores everything locally.
+- **Source management:** Enable or disable each source individually, fetch from a single source on demand, see the last result and error for each one, and set per-source limits or one shared limit for all sources at once.
+- **Connection testing:** Tests each proxy directly, logs latency, and looks up the IP's country code while testing.
+- **Everyday use:** Copy links, share them, open directly in Telegram, generate QR codes, and save favorites.
+- **Experience:** Dark mode, English/Persian support with real RTL, swipe actions, and inline progress for longer operations.
 
 ### Scope and privacy
 
-MTLink does not provide proxies. It reads only the public sources configured within the application. Proxy data, test status, and preferences are stored locally on the device. Periodic checks run only after an explicit user opt-in.
+MTLink doesn't provide any proxies itself — it only reads the public sources configured in the app. Proxy data, test results, and settings are stored locally on your device. Periodic checks only run if you've explicitly turned them on.
