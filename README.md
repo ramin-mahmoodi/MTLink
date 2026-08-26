@@ -148,6 +148,8 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 
 ---
 
+<div dir="rtl">
+
 ## 🇮🇷 فارسی
 
 ### MTLink چیست؟
@@ -178,6 +180,8 @@ MTLink یک اپلیکیشن اندرویدی بومی است که به شما �
 
 ### 🏗️ معماری پروژه
 
+<div dir="ltr">
+
 ```
 app/src/main/java/ir/mtlink/client/
 │
@@ -196,6 +200,8 @@ app/src/main/java/ir/mtlink/client/
 ├── PeriodicTestReceiver.kt  # BroadcastReceiver برای آزمایش دوره‌ای
 └── PeriodicTestScheduler.kt # تنظیم AlarmManager برای آزمایش دوره‌ای
 ```
+
+</div>
 
 ---
 
@@ -216,34 +222,52 @@ app/src/main/java/ir/mtlink/client/
 - دستگاه یا شبیه‌ساز با Android 7.0 (API 24) یا بالاتر
 
 **ساخت:**
+
+<div dir="ltr">
+
 ```bash
 git clone https://github.com/ramin-mahmoodi/MTLink.git
 cd MTLink
 ./gradlew assembleDebug
 ```
 
+</div>
+
 فایل APK در مسیر `app/build/outputs/apk/debug/` قرار می‌گیرد.
 
 **ساخت Release:**
 
 یک فایل `keystore.properties` در ریشه پروژه بسازید:
+
+<div dir="ltr">
+
 ```properties
 storeFile=path/to/your.keystore
 storePassword=your_store_password
 keyAlias=your_key_alias
 keyPassword=your_key_password
 ```
+
+</div>
+
 سپس:
+
+<div dir="ltr">
+
 ```bash
 ./gradlew assembleRelease
 ```
+
+</div>
 
 ---
 
 ### 🤝 مشارکت در توسعه
 
-1. ریپوزیتوری را Fork کنید
-2. یک Branch جدید بسازید: `git checkout -b feature/your-feature`
-3. تغییرات را Commit کنید: `git commit -m 'Add: your feature'`
-4. Branch را Push کنید: `git push origin feature/your-feature`
-5. یک Pull Request باز کنید
+۱. ریپوزیتوری را Fork کنید  
+۲. یک Branch جدید بسازید: `git checkout -b feature/your-feature`  
+۳. تغییرات را Commit کنید: `git commit -m 'Add: your feature'`  
+۴. Branch را Push کنید: `git push origin feature/your-feature`  
+۵. یک Pull Request باز کنید  
+
+</div>
