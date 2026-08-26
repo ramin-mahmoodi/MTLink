@@ -9,7 +9,7 @@
 [![Android](https://img.shields.io/badge/Platform-Android%2024%2B-3DDC84?logo=android&logoColor=white)](https://developer.android.com)
 [![Kotlin](https://img.shields.io/badge/Language-Kotlin-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![License](https://img.shields.io/badge/License-MIT-blue)](#-license)
-[![Version](https://img.shields.io/badge/Version-1.3.12-orange)](https://github.com/ramin-mahmoodi/MTLink/releases)
+[![Version](https://img.shields.io/badge/Version-1.0.0-orange)](https://github.com/ramin-mahmoodi/MTLink/releases)
 
 [**English**](#-english) · [**فارسی**](#-فارسی)
 

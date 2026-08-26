@@ -1,0 +1,66 @@
+name: Build and publish Android release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build temporarily signed Safe APK and publish release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Generate temporary signing material
+        run: |
+          SIGNING_PASSWORD=$(openssl rand -hex 24)
+          keytool -genkeypair -noprompt \
+            -keystore app/release.jks \
+            -storepass "$SIGNING_PASSWORD" \
+            -alias mtlink \
+            -keypass "$SIGNING_PASSWORD" \
+            -keyalg RSA -keysize 4096 -validity 10000 \
+            -dname "CN=MTLink Temporary Release, OU=GitHub Actions, O=MTLink, C=IR"
+          cat > keystore.properties <<EOF
+          storeFile=app/release.jks
+          storePassword=$SIGNING_PASSWORD
+          keyAlias=mtlink
+          keyPassword=$SIGNING_PASSWORD
+          EOF
+
+      - name: Verify tag matches app version
+        run: |
+          VERSION=$(grep -E 'versionName = ' app/build.gradle.kts | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/')
+          test "v$VERSION" = "${GITHUB_REF_NAME}"
+
+      - name: Build temporarily signed Safe APK
+        run: ./gradlew :app:assembleSafe
+
+      - name: Prepare release assets
+        run: |
+          APK_NAME="MTLink-${GITHUB_REF_NAME}-safe.apk"
+          cp app/build/outputs/apk/safe/app-safe.apk "$APK_NAME"
+          sha256sum "$APK_NAME" > "${APK_NAME}.sha256"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "MTLink ${GITHUB_REF_NAME}" \
+            --notes "Safe APK built by GitHub Actions from this tag. This release uses a temporary signing key, so future releases may require uninstalling this version first." \
+            "MTLink-${GITHUB_REF_NAME}-safe.apk" \
+            "MTLink-${GITHUB_REF_NAME}-safe.apk.sha256"
