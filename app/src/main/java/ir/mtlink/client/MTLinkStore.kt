@@ -37,7 +37,8 @@ class MTLinkStore(context: Context) {
     fun appPreferences(): AppPreferences = AppPreferences(
         autoTestAfterFetch = preferences.getBoolean("auto_test_after_fetch", false),
         hapticsEnabled = preferences.getBoolean("haptics_enabled", true),
-        language = runCatching { AppLanguage.valueOf(preferences.getString("language", AppLanguage.FA.name) ?: AppLanguage.FA.name) }.getOrDefault(AppLanguage.FA),
+        // fixed: A fresh installation opens in English; any saved language remains unchanged.
+        language = runCatching { AppLanguage.valueOf(preferences.getString("language", AppLanguage.EN.name) ?: AppLanguage.EN.name) }.getOrDefault(AppLanguage.EN),
         periodicTestEnabled = preferences.getBoolean("periodic_test_enabled", false),
         periodicTestMinutes = preferences.getInt("periodic_test_minutes", 60).coerceAtLeast(15),
     )
