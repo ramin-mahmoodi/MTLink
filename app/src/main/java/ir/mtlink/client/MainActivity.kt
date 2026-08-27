@@ -1199,7 +1199,7 @@ class MainActivity : ComponentActivity() {
         val completed = if (fetchProgressActive) fetchProgressCompleted.get() else testProgressCompleted.get()
         return "$completed/$total · ${if (total == 0) 0 else (completed * 100 / total)}%"
     }
-    private fun primary(text: String, click: () -> Unit): TextView = label(text, 15, Color.WHITE, true).apply { gravity = Gravity.CENTER; setPadding(dp(18), 0, dp(18), 0); background = gradient("#7697FF", "#536ECA", 16); setOnClickListener { click() } }
+    private fun primary(text: String, click: () -> Unit): TextView = label(text, 15, Color.WHITE, true).apply { gravity = Gravity.CENTER; setPadding(dp(18), 0, dp(18), 0); background = if (isDarkTheme()) gradient("#7EA8FF", "#4A72D6", 16) else gradient("#4F79F5", "#315BD5", 16); setOnClickListener { click() } }
     private fun proxyRow(proxy: ProxyRecord, click: () -> Unit): View = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; minimumHeight = dp(76); background = cardBackground(18); setPadding(dp(16), dp(13), dp(16), dp(13)); setOnClickListener { click() }; addView(label(proxy.displayAddress(), 15, color(R.color.mt_text), true).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END }); addView(label("${if (proxy.protocol == ProxyProtocol.MTPROTO) "MTProto" else "SOCKS5"} · ${proxy.latencyMs?.let { "$it ms" } ?: t("تست‌نشده", "Untested")}", 12, color(R.color.mt_muted), false).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END; setPadding(0, dp(4), 0, 0) }); layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) } }
     private fun emptyCard(title: String, body: String) = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = if (ui.isRtl) Gravity.RIGHT else Gravity.LEFT; background = cardBackground(20); setPadding(dp(20), dp(22), dp(20), dp(22)); applyUiDirection(this); addView(label(title, 17, color(R.color.mt_text), true)); addView(label(body, 13, color(R.color.mt_muted), false).apply { maxLines = 2; setPadding(0, dp(8), 0, 0) }) }
     private fun setting(title: String, body: String, checked: Boolean, changed: (Boolean) -> Unit) = LinearLayout(this).apply {
@@ -1244,9 +1244,9 @@ class MainActivity : ComponentActivity() {
         includeFontPadding = true
         setLineSpacing(dp(2).toFloat(), 1f)
     }
-    private fun cardBackground(radius: Int) = rounded(color(R.color.mt_surface_raised), color(R.color.mt_border), radius)
+    private fun cardBackground(radius: Int) = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(color(R.color.mt_surface_raised), color(R.color.mt_surface))).apply { setStroke(dp(1), color(R.color.mt_border)); cornerRadius = dp(radius).toFloat() }
     private fun rounded(fill: Int, stroke: Int, radius: Int) = GradientDrawable().apply { setColor(fill); if (stroke != Color.TRANSPARENT) setStroke(dp(1), stroke); cornerRadius = dp(radius).toFloat() }
-    private fun gradient(start: String, end: String, radius: Int) = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.parseColor(start), Color.parseColor(end))).apply { setStroke(dp(1), Color.parseColor("#3A506C")); cornerRadius = dp(radius).toFloat() }
+    private fun gradient(start: String, end: String, radius: Int) = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.parseColor(start), Color.parseColor(end))).apply { setStroke(dp(1), color(R.color.mt_border)); cornerRadius = dp(radius).toFloat() }
     private fun applyUiDirection(vararg views: View) {
         val layout = if (ui.isRtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
         val text = if (ui.isRtl) View.TEXT_DIRECTION_FIRST_STRONG_RTL else View.TEXT_DIRECTION_FIRST_STRONG_LTR

@@ -36,7 +36,7 @@ class SourceAdapter(
         val row = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; layoutDirection = if (ui.isRtl) android.view.View.LAYOUT_DIRECTION_RTL else android.view.View.LAYOUT_DIRECTION_LTR
             minimumHeight = dp(94); setPadding(dp(16), dp(13), dp(13), dp(13))
-            background = ProxyAdapter.rounded(ContextCompat.getColor(context, R.color.mt_surface_raised), ContextCompat.getColor(context, R.color.mt_border), 18)
+            background = ProxyAdapter.cardSurface(context, 18)
             layoutParams = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) }
         }
         val copy = LinearLayout(context).apply {

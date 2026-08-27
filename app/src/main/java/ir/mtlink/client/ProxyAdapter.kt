@@ -77,7 +77,7 @@ class ProxyAdapter(
             gravity = Gravity.CENTER_VERTICAL
             layoutDirection = if (ui.isRtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
             setPadding(dp(14), dp(13), dp(13), dp(13))
-            background = rounded(ContextCompat.getColor(context, R.color.mt_surface_raised), ContextCompat.getColor(context, R.color.mt_border), 20)
+            background = cardSurface(context, 20)
             elevation = if (elevatedCards) dp(2).toFloat() else 0f
         }
         val dot = TextView(context).apply {
@@ -325,5 +325,6 @@ class ProxyAdapter(
             setLineSpacing(dp(1).toFloat(), 1f)
         }
         fun rounded(fill: Int, stroke: Int, radius: Int) = GradientDrawable().apply { setColor(fill); if (stroke != Color.TRANSPARENT) setStroke(dp(1), stroke); cornerRadius = dp(radius).toFloat() }
+        fun cardSurface(context: android.content.Context, radius: Int) = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(ContextCompat.getColor(context, R.color.mt_surface_raised), ContextCompat.getColor(context, R.color.mt_surface))).apply { setStroke(dp(1), ContextCompat.getColor(context, R.color.mt_border)); cornerRadius = dp(radius).toFloat() }
     }
 }
