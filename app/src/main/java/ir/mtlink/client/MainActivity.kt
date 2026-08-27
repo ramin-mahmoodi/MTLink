@@ -175,8 +175,9 @@ class MainActivity : ComponentActivity() {
             clipToPadding = false
             clipChildren = false
         }
-        navIndicator = View(this).apply { background = rounded(color(R.color.mt_primary_soft), color(R.color.mt_border), 24) }
-        nav.addView(navIndicator, FrameLayout.LayoutParams(0, dp(48)).apply { leftMargin = dp(8); topMargin = dp(4) })
+        // Equal 8dp inset on every side: 56dp outer capsule / 40dp inner capsule.
+        navIndicator = View(this).apply { background = rounded(color(R.color.mt_primary_soft), color(R.color.mt_border), 20) }
+        nav.addView(navIndicator, FrameLayout.LayoutParams(0, dp(40)).apply { leftMargin = dp(8); topMargin = dp(8) })
         nav.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
             if (navButtons.isNotEmpty()) animateNavigationSelection(animate = false)
         }
@@ -208,7 +209,11 @@ class MainActivity : ComponentActivity() {
         currentTab = tab
         if (forceRefresh) refreshTab(tab)
         if (content.currentItem == index) renderNavigation(animate = false)
-        else content.setCurrentItem(index, true)
+        else {
+            // Start the capsule movement on the tab touch itself, independently of page settling.
+            renderNavigation(animate = true)
+            content.setCurrentItem(index, true)
+        }
     }
 
     private fun renderNavigation(animate: Boolean) {
