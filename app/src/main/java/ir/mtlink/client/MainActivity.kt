@@ -148,10 +148,9 @@ class MainActivity : ComponentActivity() {
             orientation = LinearLayout.HORIZONTAL
             layoutDirection = rootDirection
             gravity = Gravity.CENTER
-            setBackgroundColor(Color.TRANSPARENT)
-            background = null
-            elevation = 0f
-            setPadding(dp(2), dp(4), dp(2), dp(4))
+            background = rounded(color(R.color.mt_surface_raised), color(R.color.mt_border), 28)
+            elevation = dp(2).toFloat()
+            setPadding(dp(8), dp(4), dp(8), dp(4))
         }
         loadingOverlay = LoadingOverlay(this)
         frame.addView(base, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
