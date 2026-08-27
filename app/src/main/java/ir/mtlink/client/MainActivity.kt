@@ -35,6 +35,8 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import java.util.concurrent.Executors
+import java.util.concurrent.ExecutorCompletionService
+import java.util.concurrent.Callable
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.abs
 
@@ -64,11 +66,7 @@ class MainActivity : ComponentActivity() {
     private val fetchProgressTotal = AtomicInteger(0)
     private val fetchProgressCompleted = AtomicInteger(0)
     @Volatile private var fetchProgressStatus = ""
-    private var homeProgressPanel: LinearLayout? = null
-    private var homeProgressHeadline: TextView? = null
-    private var homeProgressTrack: FrameLayout? = null
-    private var homeProgressFill: View? = null
-    private var homeProgressText: TextView? = null
+    private val progressWidgets = mutableMapOf<Tab, ProgressWidgets>()
     private val tabViews = mutableMapOf<Tab, View>()
     private val pageContainers = mutableMapOf<Tab, FrameLayout>()
     private val navButtons = mutableMapOf<Tab, NavButton>()
@@ -80,6 +78,19 @@ class MainActivity : ComponentActivity() {
     private enum class SourceFilter { ALL, ENABLED, ERRORS }
     private data class TabBounds(val left: Int, val width: Int)
     private data class NavButton(val root: FrameLayout, val icon: ImageView, val label: TextView)
+    private data class ProgressWidgets(
+        val panel: LinearLayout,
+        val headline: TextView,
+        val track: FrameLayout,
+        val fill: View,
+        val copy: TextView,
+    )
+    private data class SourceFetchResult(
+        val index: Int,
+        val source: SourceDefinition,
+        val proxies: List<ProxyRecord>,
+        val error: String?,
+    )
 
     override fun attachBaseContext(newBase: Context) {
         val selectedTheme = MTLinkStore(newBase).appPreferences().theme
@@ -318,6 +329,7 @@ class MainActivity : ComponentActivity() {
 
     private fun refreshTab(tab: Tab) {
         tabViews.remove(tab)
+        progressWidgets.remove(tab)
         pageContainers[tab]?.let { container ->
             container.removeAllViews()
             bindTab(container, tab)
@@ -363,7 +375,7 @@ class MainActivity : ComponentActivity() {
         })
         addView(section(t("اقدام‌های سریع", "Quick actions")))
         addView(quickActionsBar())
-        addView(homeTestProgress(), LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(14) })
+        addView(homeTestProgress(Tab.HOME), LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(14) })
         addView(section(t("پراکسی‌های برتر", "Top proxies"), t("مشاهده همه", "View all")) { showTab(Tab.PROXIES) })
         val top = proxies.sortedBy { it.latencyMs ?: Long.MAX_VALUE }.take(3)
         if (top.isEmpty()) addView(emptyCard(t("هنوز پراکسی‌ای دریافت نشده", "No proxies yet"), t("با لمس «دریافت» منابع فعال خوانده می‌شوند.", "Tap Fetch to read active sources.")))
@@ -439,7 +451,7 @@ class MainActivity : ComponentActivity() {
             addView(statCard(R.drawable.ic_stat_check, t("خطا", "Issues"), errorCount, "#3F242D", "#291A22") { sourceIssueCountText = it }, LinearLayout.LayoutParams(0, dp(104), 1f).apply { marginStart = dp(6) })
         }
         container.addView(stats)
-        container.addView(homeTestProgress(), LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12) })
+        container.addView(homeTestProgress(Tab.SOURCES), LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12) })
         container.addView(sourceTools(), LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12) })
         container.addView(sourceFilters(), LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(54)).apply { topMargin = dp(8) })
         val empty = emptyCard(t("فهرست خالی است", "Nothing to show"), t("منبعی با این فیلتر وجود ندارد.", "There are no sources matching this filter."))
@@ -823,19 +835,33 @@ class MainActivity : ComponentActivity() {
                 val incoming = LinkedHashMap<String, ProxyRecord>()
                 var errors = 0
                 var completed = 0
-                sourceList.indices.forEach { index ->
-                    val source = sourceList[index]
-                    if (!source.enabled) return@forEach
-                    postUi { updateFetchProgress(completed, source.title) }
-                    try {
-                        val found = ProxyEngine.fetch(source, source.fetchLimit.coerceIn(5, 250))
-                        found.forEach { proxy -> if (incoming.size < 500) incoming.putIfAbsent(proxy.stableKey(), proxy) }
-                        sourceList[index] = source.copy(lastFetchedAt = System.currentTimeMillis(), lastFetchCount = found.size, lastError = null)
-                    } catch (error: Exception) {
-                        errors += 1; sourceList[index] = source.copy(lastError = error.message?.take(80) ?: "دریافت ناموفق")
+                // fixed: Slow sources are isolated so available sources can publish results without waiting for all timeouts.
+                val workers = Executors.newFixedThreadPool(minOf(4, enabledCount))
+                val completion = ExecutorCompletionService<SourceFetchResult>(workers)
+                try {
+                    sourceList.forEachIndexed { index, source ->
+                        if (source.enabled) completion.submit(Callable {
+                            try {
+                                SourceFetchResult(index, source, ProxyEngine.fetch(source, source.fetchLimit.coerceIn(5, 250)), null)
+                            } catch (error: Exception) {
+                                SourceFetchResult(index, source, emptyList(), error.message?.take(80) ?: t("دریافت ناموفق", "Fetch failed"))
+                            }
+                        })
                     }
-                    completed += 1
-                    postUi { updateFetchProgress(completed, source.title) }
+                    repeat(enabledCount) {
+                        val result = completion.take().get()
+                        completed += 1
+                        if (result.error == null) {
+                            result.proxies.forEach { proxy -> if (incoming.size < 500) incoming.putIfAbsent(proxy.stableKey(), proxy) }
+                            sourceList[result.index] = result.source.copy(lastFetchedAt = System.currentTimeMillis(), lastFetchCount = result.proxies.size, lastError = null)
+                        } else {
+                            errors += 1
+                            sourceList[result.index] = result.source.copy(lastError = result.error)
+                        }
+                        postUi { updateFetchProgress(completed, result.source.title) }
+                    }
+                } finally {
+                    workers.shutdownNow()
                 }
                 val current = store.proxies().associateBy { it.stableKey() }.toMutableMap()
                 var added = 0
@@ -1069,7 +1095,7 @@ class MainActivity : ComponentActivity() {
         addView(image, LinearLayout.LayoutParams(dp(46), dp(46)))
         addView(label(title, 11, color(R.color.mt_muted), true).apply { gravity = Gravity.CENTER; textAlignment = View.TEXT_ALIGNMENT_CENTER; setPadding(0, dp(4), 0, 0) }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
     }
-    private fun homeTestProgress(): LinearLayout = LinearLayout(this).apply {
+    private fun homeTestProgress(owner: Tab): LinearLayout = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         background = cardBackground(18)
         setPadding(dp(16), dp(14), dp(16), dp(14))
@@ -1083,18 +1109,14 @@ class MainActivity : ComponentActivity() {
         track.addView(fill, FrameLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, if (ui.isRtl) Gravity.RIGHT else Gravity.LEFT))
         addView(top)
         addView(track, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(8)).apply { topMargin = dp(11) })
-        homeProgressPanel = this
-        homeProgressHeadline = headline
-        homeProgressTrack = track
-        homeProgressFill = fill
-        homeProgressText = progress
+        progressWidgets[owner] = ProgressWidgets(this, headline, track, fill, progress)
         post { renderTestProgress() }
     }
     private fun startTestProgress(total: Int) {
         testProgressActive = true
         testProgressTotal.set(total)
         testProgressCompleted.set(0)
-        homeProgressPanel?.visibility = View.VISIBLE
+        progressWidgets.values.forEach { it.panel.visibility = View.VISIBLE }
         renderTestProgress()
     }
     private fun updateTestProgress(completed: Int) {
@@ -1112,7 +1134,7 @@ class MainActivity : ComponentActivity() {
         fetchProgressTotal.set(total)
         fetchProgressCompleted.set(0)
         fetchProgressStatus = t("در حال آماده‌سازی منابع", "Preparing sources")
-        homeProgressPanel?.visibility = View.VISIBLE
+        progressWidgets.values.forEach { it.panel.visibility = View.VISIBLE }
         renderTestProgress()
     }
     private fun updateFetchProgress(completed: Int, sourceTitle: String) {
@@ -1127,17 +1149,21 @@ class MainActivity : ComponentActivity() {
         hideHomeProgressIfIdle()
     }
     private fun hideHomeProgressIfIdle() {
-        if (!testProgressActive && !fetchProgressActive) homeProgressPanel?.visibility = View.GONE
+        if (!testProgressActive && !fetchProgressActive) progressWidgets.values.forEach { it.panel.visibility = View.GONE }
     }
     private fun renderTestProgress() {
         val total = if (fetchProgressActive) fetchProgressTotal.get().coerceAtLeast(1) else testProgressTotal.get().coerceAtLeast(1)
         val completed = if (fetchProgressActive) fetchProgressCompleted.get() else testProgressCompleted.get()
         val fraction = completed.toFloat() / total.toFloat()
-        homeProgressHeadline?.text = progressHeadline()
-        homeProgressText?.text = "$completed/$total · ${(fraction * 100).toInt()}%"
-        val track = homeProgressTrack ?: return
-        if (track.width == 0) { track.post { renderTestProgress() }; return }
-        homeProgressFill?.layoutParams = FrameLayout.LayoutParams((track.width * fraction).toInt(), ViewGroup.LayoutParams.MATCH_PARENT, if (ui.isRtl) Gravity.RIGHT else Gravity.LEFT)
+        progressWidgets.values.toList().forEach { widget ->
+            widget.headline.text = progressHeadline()
+            widget.copy.text = "$completed/$total · ${(fraction * 100).toInt()}%"
+            if (widget.track.width == 0) {
+                widget.track.post { renderTestProgress() }
+            } else {
+                widget.fill.layoutParams = FrameLayout.LayoutParams((widget.track.width * fraction).toInt(), ViewGroup.LayoutParams.MATCH_PARENT, if (ui.isRtl) Gravity.RIGHT else Gravity.LEFT)
+            }
+        }
     }
     private fun progressHeadline(): String = if (fetchProgressActive) {
         fetchProgressStatus.takeIf { it.isNotBlank() }?.let { source -> t("در حال دریافت: $source", "Fetching: $source") }
@@ -1210,6 +1236,7 @@ class MainActivity : ComponentActivity() {
     }
     private fun invalidateTabCache() {
         tabViews.clear()
+        progressWidgets.clear()
         pageContainers.values.forEach { it.removeAllViews() }
         pageContainers.clear()
         tabPagerAdapter.notifyDataSetChanged()
