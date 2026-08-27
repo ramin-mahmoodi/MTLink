@@ -23,6 +23,7 @@ class ProxyAdapter(
     private val ui: UiText,
     private val onClick: (ProxyRecord) -> Unit,
     private val onAction: (ProxyRecord, SwipeAction) -> Unit,
+    private val onHaptic: (View) -> Unit = {},
     private val elevatedCards: Boolean = true,
 ) : RecyclerView.Adapter<ProxyAdapter.ProxyHolder>() {
     private var items: List<ProxyRecord> = emptyList()
@@ -229,6 +230,7 @@ class ProxyAdapter(
                             }
                         }
                     } else {
+                        onHaptic(holder.card)
                         holder.card.animate().scaleX(.985f).scaleY(.985f).setDuration(75).setInterpolator(motion).withEndAction {
                             holder.card.animate().scaleX(1f).scaleY(1f).setDuration(120).setInterpolator(motion).withEndAction { onClick(proxy) }.start()
                         }.start()
@@ -291,7 +293,7 @@ class ProxyAdapter(
                 scaleType = ImageView.ScaleType.CENTER
                 contentDescription = action.name
                 background = rounded(color, Color.TRANSPARENT, 12)
-                setOnClickListener { closeCard(holder); onAction(proxy, action) }
+                setOnClickListener { onHaptic(this); closeCard(holder); onAction(proxy, action) }
             }
             container.addView(button, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply { marginStart = dp(2); marginEnd = dp(2) })
         }

@@ -260,7 +260,7 @@ class MainActivity : ComponentActivity() {
 
     private fun createNavButton(tab: Tab): NavButton {
         val root = FrameLayout(this).apply {
-            setOnClickListener { showTab(tab) }
+            setOnClickListener { haptic(this); showTab(tab) }
             setOnTouchListener { view, event ->
                 when (event.actionMasked) {
                     android.view.MotionEvent.ACTION_DOWN -> view.animate().scaleX(0.97f).scaleY(0.97f).setDuration(65).start()
@@ -421,7 +421,7 @@ class MainActivity : ComponentActivity() {
         }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(61)))
         val list = RecyclerView(this).apply { layoutManager = LinearLayoutManager(this@MainActivity); setPadding(0, dp(16), 0, dp(12)); clipToPadding = false; applyUiDirection(this) }
         lateinit var adapter: ProxyAdapter
-        adapter = ProxyAdapter(ui, { }, { proxy, action -> handleSwipeAction(proxy, action, adapter) }, elevatedCards = false)
+        adapter = ProxyAdapter(ui, { }, { proxy, action -> handleSwipeAction(proxy, action, adapter) }, onHaptic = ::haptic, elevatedCards = false)
         val visible = store.proxies().filter { (proxyFilter == null || it.status == proxyFilter) && (!favoritesOnly || it.favorite) }
             .sortedWith(compareByDescending<ProxyRecord> { it.favorite }.thenBy { it.latencyMs ?: Long.MAX_VALUE })
         adapter.submit(visible)
@@ -476,6 +476,7 @@ class MainActivity : ComponentActivity() {
             },
             onLimit = { source -> chooseSourceFetchLimit(source) },
             onEdit = { source -> showSourceActions(source) },
+            onHaptic = ::haptic,
         )
         sourceListAdapter = adapter
         adapter.submit(filteredSources())
@@ -998,7 +999,6 @@ class MainActivity : ComponentActivity() {
     private fun toggleFavorite(proxy: ProxyRecord, adapter: ProxyAdapter? = proxyListAdapter) {
         val updated = proxy.copy(favorite = !proxy.favorite)
         store.saveProxies(store.proxies().map { if (it.id == proxy.id) updated else it })
-        if (store.appPreferences().hapticsEnabled) window.decorView.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
         if (favoritesOnly && !updated.favorite) adapter?.removeItem(proxy.id) else adapter?.updateItem(updated)
     }
 
@@ -1047,7 +1047,7 @@ class MainActivity : ComponentActivity() {
         clipToPadding = false
         applyUiDirection(this)
         lateinit var adapter: ProxyAdapter
-        adapter = ProxyAdapter(ui, { }, { proxy, action -> handleSwipeAction(proxy, action, adapter) }, elevatedCards = false)
+        adapter = ProxyAdapter(ui, { }, { proxy, action -> handleSwipeAction(proxy, action, adapter) }, onHaptic = ::haptic, elevatedCards = false)
         adapter.submit(items)
         this.adapter = adapter
     }
@@ -1110,8 +1110,8 @@ class MainActivity : ComponentActivity() {
         addView(label(title, 17, color(R.color.mt_text), true), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         if (action != null) addView(label(action, 12, color(R.color.mt_primary_light), true).apply { setPadding(dp(9), dp(5), dp(9), dp(5)); background = rounded(color(R.color.mt_primary_soft), Color.TRANSPARENT, 11); setOnClickListener { onAction?.invoke() } }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
     }
-    private fun action(text: String, click: () -> Unit): TextView = label(text, 12, color(R.color.mt_primary_light), true).apply { gravity = Gravity.CENTER; setPadding(dp(13), 0, dp(13), 0); background = rounded(color(R.color.mt_surface_soft), color(R.color.mt_border), 14); setOnClickListener { click() } }
-    private fun quickAction(text: String, click: () -> Unit): TextView = label(text, 13, color(R.color.mt_primary_light), true).apply { gravity = Gravity.CENTER; setPadding(dp(14), 0, dp(14), 0); background = rounded(color(R.color.mt_surface_soft), color(R.color.mt_border), 14); setOnClickListener { click() } }
+    private fun action(text: String, click: () -> Unit): TextView = label(text, 12, color(R.color.mt_primary_light), true).apply { gravity = Gravity.CENTER; setPadding(dp(13), 0, dp(13), 0); background = rounded(color(R.color.mt_surface_soft), color(R.color.mt_border), 14); setOnClickListener { haptic(this); click() } }
+    private fun quickAction(text: String, click: () -> Unit): TextView = label(text, 13, color(R.color.mt_primary_light), true).apply { gravity = Gravity.CENTER; setPadding(dp(14), 0, dp(14), 0); background = rounded(color(R.color.mt_surface_soft), color(R.color.mt_border), 14); setOnClickListener { haptic(this); click() } }
     private fun quickActionsBar(): View = LinearLayout(this).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER
@@ -1131,7 +1131,7 @@ class MainActivity : ComponentActivity() {
     private fun quickIconAction(icon: Int, title: String, click: () -> Unit): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         gravity = Gravity.CENTER
-        setOnClickListener { click() }
+        setOnClickListener { haptic(this); click() }
         val image = ImageView(context).apply {
             setImageResource(icon)
             scaleType = ImageView.ScaleType.CENTER
@@ -1226,7 +1226,7 @@ class MainActivity : ComponentActivity() {
         val completed = if (fetchProgressActive) fetchProgressCompleted.get() else testProgressCompleted.get()
         return "$completed/$total · ${if (total == 0) 0 else (completed * 100 / total)}%"
     }
-    private fun primary(text: String, click: () -> Unit): TextView = label(text, 15, Color.WHITE, true).apply { gravity = Gravity.CENTER; setPadding(dp(18), 0, dp(18), 0); background = if (isDarkTheme()) gradient("#7EA8FF", "#4A72D6", 16) else gradient("#4F79F5", "#315BD5", 16); setOnClickListener { click() } }
+    private fun primary(text: String, click: () -> Unit): TextView = label(text, 15, Color.WHITE, true).apply { gravity = Gravity.CENTER; setPadding(dp(18), 0, dp(18), 0); background = if (isDarkTheme()) gradient("#7EA8FF", "#4A72D6", 16) else gradient("#4F79F5", "#315BD5", 16); setOnClickListener { haptic(this); click() } }
     private fun proxyRow(proxy: ProxyRecord, click: () -> Unit): View = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; minimumHeight = dp(76); background = cardBackground(18); setPadding(dp(16), dp(13), dp(16), dp(13)); setOnClickListener { click() }; addView(label(proxy.displayAddress(), 15, color(R.color.mt_text), true).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END }); addView(label("${if (proxy.protocol == ProxyProtocol.MTPROTO) "MTProto" else "SOCKS5"} · ${proxy.latencyMs?.let { "$it ms" } ?: t("تست‌نشده", "Untested")}", 12, color(R.color.mt_muted), false).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END; setPadding(0, dp(4), 0, 0) }); layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) } }
     private fun emptyCard(title: String, body: String) = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = if (ui.isRtl) Gravity.RIGHT else Gravity.LEFT; background = cardBackground(20); setPadding(dp(20), dp(22), dp(20), dp(22)); applyUiDirection(this); addView(label(title, 17, color(R.color.mt_text), true)); addView(label(body, 13, color(R.color.mt_muted), false).apply { maxLines = 2; setPadding(0, dp(8), 0, 0) }) }
     private fun setting(title: String, body: String, checked: Boolean, changed: (Boolean) -> Unit) = LinearLayout(this).apply {
@@ -1236,7 +1236,7 @@ class MainActivity : ComponentActivity() {
         copy.addView(label(body, 12, color(R.color.mt_muted), false).apply { maxLines = 2; setPadding(0, dp(4), 0, 0) })
         addView(copy, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         // fixed: SwitchCompat replaces the deprecated platform Switch widget.
-        addView(SwitchCompat(context).apply { isChecked = checked; setOnCheckedChangeListener { _, value -> changed(value) } })
+        addView(SwitchCompat(context).apply { isChecked = checked; setOnCheckedChangeListener { _, value -> haptic(this); changed(value) } })
     }
     private fun settingsGroup() = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
@@ -1249,14 +1249,14 @@ class MainActivity : ComponentActivity() {
         minimumHeight = dp(78)
         setPadding(dp(18), dp(14), dp(18), dp(14))
         applyUiDirection(this)
-        setOnClickListener { click() }
+        setOnClickListener { haptic(this); click() }
         val copy = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, dp(12), 0); applyUiDirection(this) }
         copy.addView(label(title, 15, color(R.color.mt_text), true).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
         copy.addView(label(body, 12, color(R.color.mt_muted), false).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END; setPadding(0, dp(4), 0, 0) })
         addView(copy, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         addView(label(if (ui.isRtl) "‹" else "›", 26, color(R.color.mt_primary), false).apply { gravity = Gravity.CENTER; textDirection = View.TEXT_DIRECTION_LTR }, LinearLayout.LayoutParams(dp(24), ViewGroup.LayoutParams.WRAP_CONTENT))
     }
-    private fun buttonCard(title: String, body: String, danger: Boolean = false, click: () -> Unit) = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; minimumHeight = dp(80); background = cardBackground(20); setPadding(dp(18), dp(16), dp(18), dp(16)); applyUiDirection(this); setOnClickListener { click() }; addView(label(title, 15, if (danger) color(R.color.mt_danger) else color(R.color.mt_text), true)); addView(label(body, 12, color(R.color.mt_muted), false).apply { maxLines = 2; setPadding(0, dp(5), 0, 0) }); layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(12) } }
+    private fun buttonCard(title: String, body: String, danger: Boolean = false, click: () -> Unit) = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; minimumHeight = dp(80); background = cardBackground(20); setPadding(dp(18), dp(16), dp(18), dp(16)); applyUiDirection(this); setOnClickListener { haptic(this); click() }; addView(label(title, 15, if (danger) color(R.color.mt_danger) else color(R.color.mt_text), true)); addView(label(body, 12, color(R.color.mt_muted), false).apply { maxLines = 2; setPadding(0, dp(5), 0, 0) }); layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(12) } }
     private fun divider() = View(this).apply { setBackgroundColor(color(R.color.mt_border)); layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1)).apply { marginStart = dp(15); marginEnd = dp(15) } }
     private fun label(value: String, size: Int, textColor: Int, bold: Boolean) = TextView(this).apply {
         layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
@@ -1294,6 +1294,7 @@ class MainActivity : ComponentActivity() {
         tabPagerAdapter.notifyDataSetChanged()
     }
     private fun color(id: Int) = getColor(id)
+    private fun haptic(view: View) { if (store.appPreferences().hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY) }
     private fun isDarkTheme() = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
     private fun toast(message: String) = Toast.makeText(this, message, Toast.LENGTH_SHORT).show()

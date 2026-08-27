@@ -15,6 +15,7 @@ class SourceAdapter(
     private val onToggle: (SourceDefinition, Boolean) -> Unit,
     private val onLimit: (SourceDefinition) -> Unit,
     private val onEdit: (SourceDefinition) -> Unit,
+    private val onHaptic: (android.view.View) -> Unit = {},
 ) : RecyclerView.Adapter<SourceAdapter.SourceHolder>() {
     private var items: List<SourceDefinition> = emptyList()
     fun submit(value: List<SourceDefinition>) {
@@ -92,10 +93,10 @@ class SourceAdapter(
         }
         holder.toggle.setOnCheckedChangeListener(null)
         holder.toggle.isChecked = source.enabled
-        holder.toggle.setOnCheckedChangeListener { _, enabled -> onToggle(source, enabled) }
+        holder.toggle.setOnCheckedChangeListener { _, enabled -> onHaptic(holder.toggle); onToggle(source, enabled) }
         holder.limit.text = if (ui.isRtl) "حد ${source.fetchLimit}" else "Limit ${source.fetchLimit}"
-        holder.limit.setOnClickListener { onLimit(source) }
-        holder.itemView.setOnClickListener { onEdit(source) }
+        holder.limit.setOnClickListener { onHaptic(holder.limit); onLimit(source) }
+        holder.itemView.setOnClickListener { onHaptic(holder.itemView); onEdit(source) }
     }
 
     override fun getItemCount() = items.size
