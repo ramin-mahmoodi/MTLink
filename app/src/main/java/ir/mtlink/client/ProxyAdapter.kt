@@ -181,7 +181,15 @@ class ProxyAdapter(
                 MotionEvent.ACTION_MOVE -> {
                     val dx = event.rawX - downX
                     val dy = event.rawY - downY
-                    if (!dragging && kotlin.math.abs(dx) > slop && kotlin.math.abs(dx) > kotlin.math.abs(dy)) dragging = true
+                    if (!dragging && kotlin.math.abs(dy) > slop && kotlin.math.abs(dy) >= kotlin.math.abs(dx)) {
+                        // Let the RecyclerView intercept immediately for a vertical list scroll.
+                        holder.card.parent?.requestDisallowInterceptTouchEvent(false)
+                        return@setOnTouchListener false
+                    }
+                    if (!dragging && kotlin.math.abs(dx) > slop && kotlin.math.abs(dx) > kotlin.math.abs(dy)) {
+                        dragging = true
+                        holder.card.parent?.requestDisallowInterceptTouchEvent(true)
+                    }
                     if (dragging) {
                         if (startingTranslation != 0f) {
                             val isOpposite = dx * startingTranslation < 0f
