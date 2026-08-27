@@ -519,6 +519,10 @@ class MainActivity : ComponentActivity() {
         }
         addView(fetchAndTesting)
 
+        val fetchLimit = settingsGroup()
+        fetchLimit.addView(settingsAction(t("سقف کل دریافت", "Fetch limit"), "${prefs.globalFetchLimit} ${t("پراکسی", "proxies")}") { chooseGlobalFetchLimit() })
+        addView(fetchLimit)
+
         addView(section(t("آزمون پیشرفته", "Advanced testing")))
         val advancedTesting = settingsGroup()
         advancedTesting.addView(settingsAction(t("مهلت تست اتصال", "Connection timeout"), "${prefs.testTimeoutSeconds} ${t("ثانیه", "seconds")}") { chooseTestTimeout() })
@@ -595,6 +599,20 @@ class MainActivity : ComponentActivity() {
             .show().applyDialogDirection()
     }
 
+    private fun chooseGlobalFetchLimit() {
+        val options = intArrayOf(25, 50, 100, 250, 500)
+        val prefs = store.appPreferences()
+        AlertDialog.Builder(this)
+            .setTitle(t("سقف کل دریافت", "Fetch limit"))
+            .setSingleChoiceItems(options.map { "$it ${t("پراکسی", "proxies")}" }.toTypedArray(), options.indexOf(prefs.globalFetchLimit).coerceAtLeast(0)) { dialog, index ->
+                store.saveAppPreferences(prefs.copy(globalFetchLimit = options[index]))
+                dialog.dismiss()
+                showTab(Tab.SETTINGS, forceRefresh = true)
+            }
+            .setNegativeButton(t("انصراف", "Cancel"), null)
+            .show().applyDialogDirection()
+    }
+
     private fun choosePeriodicInterval() {
         val options = intArrayOf(15, 30, 60, 120)
         val prefs = store.appPreferences()
@@ -621,7 +639,7 @@ class MainActivity : ComponentActivity() {
             Triple(R.drawable.ic_quick_add, t("افزودن", "Add"), { editSource(null); Unit }),
             Triple(R.drawable.ic_stat_check, t("همه روشن", "Enable all"), { setAllSourcesEnabled(true); Unit }),
             Triple(R.drawable.ic_action_delete, t("همه خاموش", "Disable all"), { setAllSourcesEnabled(false); Unit }),
-            Triple(R.drawable.ic_stat_globe, t("سقف کلی", "Global limit"), { chooseGlobalSourceFetchLimit(); Unit }),
+            Triple(R.drawable.ic_stat_globe, t("سقف", "Limit"), { chooseGlobalSourceFetchLimit(); Unit }),
         )
         actions.forEach { (icon, title, click) ->
             addView(quickIconAction(icon, title, click), LinearLayout.LayoutParams(0, dp(74), 1f))
@@ -727,7 +745,7 @@ class MainActivity : ComponentActivity() {
         val sources = store.sources()
         val sharedLimit = sources.map { it.fetchLimit }.distinct().singleOrNull()
         AlertDialog.Builder(this)
-            .setTitle(t("سقف کلی منابع", "Global source limit"))
+            .setTitle(t("تغییر سقف همهٔ منابع", "Set source limits"))
             .setSingleChoiceItems(options.map { "$it" }.toTypedArray(), sharedLimit?.let { options.indexOf(it).coerceAtLeast(0) } ?: -1) { dialog, index ->
                 store.saveSources(sources.map { it.copy(fetchLimit = options[index]) })
                 dialog.dismiss()
@@ -784,7 +802,7 @@ class MainActivity : ComponentActivity() {
         startFetchProgress(1)
         io.execute {
             try {
-                val found = ProxyEngine.fetch(source, source.fetchLimit.coerceIn(5, 250))
+                val found = ProxyEngine.fetch(source, minOf(source.fetchLimit.coerceIn(5, 250), store.appPreferences().globalFetchLimit))
                 val current = store.proxies().associateBy { it.stableKey() }.toMutableMap()
                 var added = 0
                 found.forEach { candidate ->
@@ -837,6 +855,7 @@ class MainActivity : ComponentActivity() {
         io.execute {
             try {
                 val prefs = store.appPreferences()
+                val overallFetchLimit = prefs.globalFetchLimit
                 val incoming = LinkedHashMap<String, ProxyRecord>()
                 var errors = 0
                 var completed = 0
@@ -847,17 +866,17 @@ class MainActivity : ComponentActivity() {
                     sourceList.forEachIndexed { index, source ->
                         if (source.enabled) completion.submit(Callable {
                             try {
-                                SourceFetchResult(index, source, ProxyEngine.fetch(source, source.fetchLimit.coerceIn(5, 250)), null)
+                                SourceFetchResult(index, source, ProxyEngine.fetch(source, minOf(source.fetchLimit.coerceIn(5, 250), overallFetchLimit)), null)
                             } catch (error: Exception) {
                                 SourceFetchResult(index, source, emptyList(), error.message?.take(80) ?: t("دریافت ناموفق", "Fetch failed"))
                             }
                         })
                     }
-                    repeat(enabledCount) {
+                    while (completed < enabledCount && incoming.size < overallFetchLimit) {
                         val result = completion.take().get()
                         completed += 1
                         if (result.error == null) {
-                            result.proxies.forEach { proxy -> if (incoming.size < 500) incoming.putIfAbsent(proxy.stableKey(), proxy) }
+                            result.proxies.forEach { proxy -> if (incoming.size < overallFetchLimit) incoming.putIfAbsent(proxy.stableKey(), proxy) }
                             sourceList[result.index] = result.source.copy(lastFetchedAt = System.currentTimeMillis(), lastFetchCount = result.proxies.size, lastError = null)
                         } else {
                             errors += 1
@@ -1078,7 +1097,7 @@ class MainActivity : ComponentActivity() {
     private fun statCard(icon: Int, label: String, number: Int, start: String, end: String, onNumberReady: ((TextView) -> Unit)? = null): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL; gravity = if (ui.isRtl) Gravity.RIGHT or Gravity.CENTER_VERTICAL else Gravity.LEFT or Gravity.CENTER_VERTICAL
         background = gradient(start, end, 20)
-        elevation = dp(1).toFloat()
+        elevation = 0f
         setPadding(dp(16), dp(12), dp(16), dp(12)); applyUiDirection(this)
         addView(ImageView(context).apply { setImageResource(icon); setColorFilter(color(R.color.mt_primary)); scaleType = ImageView.ScaleType.CENTER_INSIDE }, LinearLayout.LayoutParams(dp(24), dp(24)))
         addView(this@MainActivity.label(label, 12, color(R.color.mt_primary_light), true).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
@@ -1116,7 +1135,14 @@ class MainActivity : ComponentActivity() {
         val image = ImageView(context).apply {
             setImageResource(icon)
             scaleType = ImageView.ScaleType.CENTER
-            background = rounded(color(R.color.mt_surface_soft), color(R.color.mt_border), 24)
+            val iconTint = when (icon) {
+                R.drawable.ic_quick_test, R.drawable.ic_stat_check -> color(R.color.mt_accent_teal)
+                R.drawable.ic_quick_add -> color(R.color.mt_accent_violet)
+                R.drawable.ic_action_delete -> color(R.color.mt_danger)
+                else -> color(R.color.mt_primary)
+            }
+            setColorFilter(iconTint)
+            background = rounded(color(R.color.mt_surface_deep), color(R.color.mt_border), 24)
         }
         addView(image, LinearLayout.LayoutParams(dp(46), dp(46)))
         addView(label(title, 11, color(R.color.mt_muted), true).apply { gravity = Gravity.CENTER; textAlignment = View.TEXT_ALIGNMENT_CENTER; setPadding(0, dp(4), 0, 0) }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))

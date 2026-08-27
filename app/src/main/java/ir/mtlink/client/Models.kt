@@ -45,6 +45,7 @@ data class AppPreferences(
     val theme: AppTheme = AppTheme.SYSTEM,
     val testTimeoutSeconds: Int = 5,
     val testConcurrency: Int = 8,
+    val globalFetchLimit: Int = 500,
     val periodicTestEnabled: Boolean = false,
     val periodicTestMinutes: Int = 60,
 )
