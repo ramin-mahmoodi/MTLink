@@ -82,7 +82,7 @@ class MTLinkStore(context: Context) {
         put("id", proxy.id); put("protocol", proxy.protocol.name); put("host", proxy.host); put("port", proxy.port)
         put("secret", proxy.secret); put("sourceId", proxy.sourceId); put("fetchedAt", proxy.fetchedAt)
         put("status", proxy.status.name); put("latencyMs", proxy.latencyMs); put("testedAt", proxy.testedAt); put("lastError", proxy.lastError)
-        put("favorite", proxy.favorite); put("countryCode", proxy.countryCode)
+        put("favorite", proxy.favorite); put("countryCode", proxy.countryCode); put("verification", proxy.verification.name)
     }
 
     private fun proxyFromJson(value: JSONObject) = ProxyRecord(
@@ -94,6 +94,7 @@ class MTLinkStore(context: Context) {
         latencyMs = value.optLong("latencyMs").takeIf { value.has("latencyMs") }, testedAt = value.optLong("testedAt"),
         lastError = value.optString("lastError").takeIf { it.isNotBlank() }, favorite = value.optBoolean("favorite", false),
         countryCode = value.optString("countryCode").takeIf { it.length == 2 }?.uppercase(),
+        verification = runCatching { ProxyVerification.valueOf(value.optString("verification")) }.getOrDefault(ProxyVerification.NONE),
     )
 
     private fun defaultSources(): List<SourceDefinition> {

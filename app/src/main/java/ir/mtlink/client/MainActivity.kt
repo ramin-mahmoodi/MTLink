@@ -820,6 +820,7 @@ class MainActivity : ComponentActivity() {
                             lastError = old.lastError,
                             favorite = old.favorite,
                             countryCode = old.countryCode,
+                            verification = old.verification,
                         )
                     }
                 }
@@ -892,7 +893,7 @@ class MainActivity : ComponentActivity() {
                 var added = 0
                 incoming.values.forEach { candidate ->
                     val old = current[candidate.stableKey()]
-                    if (old == null) { current[candidate.stableKey()] = candidate; added += 1 } else current[candidate.stableKey()] = candidate.copy(id = old.id, status = old.status, latencyMs = old.latencyMs, testedAt = old.testedAt, lastError = old.lastError, favorite = old.favorite, countryCode = old.countryCode)
+                    if (old == null) { current[candidate.stableKey()] = candidate; added += 1 } else current[candidate.stableKey()] = candidate.copy(id = old.id, status = old.status, latencyMs = old.latencyMs, testedAt = old.testedAt, lastError = old.lastError, favorite = old.favorite, countryCode = old.countryCode, verification = old.verification)
                 }
                 val persisted = current.values.sortedByDescending { it.fetchedAt }.take(500)
                 store.saveSources(sourceList)

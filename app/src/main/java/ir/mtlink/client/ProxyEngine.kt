@@ -46,6 +46,7 @@ object ProxyEngine {
     }
 
     fun test(proxy: ProxyRecord, timeoutSeconds: Int): ProxyRecord {
+        if (proxy.protocol == ProxyProtocol.MTPROTO) return MTProtoHealthCheck.test(proxy, timeoutSeconds)
         val timeoutMillis = MTLinkStore.normalizeTestTimeout(timeoutSeconds) * 1_000
         val startedAt = System.nanoTime()
         return try {
@@ -62,9 +63,9 @@ object ProxyEngine {
                     }
                 }
             }
-            proxy.copy(status = ProxyStatus.REACHABLE, latencyMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt), testedAt = System.currentTimeMillis(), lastError = null)
+            proxy.copy(status = ProxyStatus.REACHABLE, latencyMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt), testedAt = System.currentTimeMillis(), lastError = null, verification = ProxyVerification.SOCKS5_HANDSHAKE)
         } catch (error: Exception) {
-            proxy.copy(status = ProxyStatus.UNREACHABLE, latencyMs = null, testedAt = System.currentTimeMillis(), lastError = error.message?.take(120) ?: "اتصال برقرار نشد")
+            proxy.copy(status = ProxyStatus.UNREACHABLE, latencyMs = null, testedAt = System.currentTimeMillis(), lastError = error.message?.take(120) ?: "اتصال برقرار نشد", verification = ProxyVerification.NONE)
         }
     }
 

@@ -3,6 +3,7 @@ package ir.mtlink.client
 enum class SourceType { AUTO, TEXT, JSON, HTML }
 enum class ProxyProtocol { MTPROTO, SOCKS5 }
 enum class ProxyStatus { UNTESTED, CHECKING, REACHABLE, UNREACHABLE }
+enum class ProxyVerification { NONE, SOCKS5_HANDSHAKE, MTPROTO_PROTOCOL, TCP_ONLY }
 enum class AppLanguage { FA, EN }
 enum class AppTheme { SYSTEM, LIGHT, DARK }
 
@@ -33,6 +34,7 @@ data class ProxyRecord(
     val lastError: String? = null,
     val favorite: Boolean = false,
     val countryCode: String? = null,
+    val verification: ProxyVerification = ProxyVerification.NONE,
 ) {
     fun stableKey(): String = "${protocol.name}:${host.lowercase()}:$port:${secret ?: ""}"
     fun displayAddress(): String = "$host:$port"
