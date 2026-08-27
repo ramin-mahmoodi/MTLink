@@ -915,7 +915,12 @@ class MainActivity : ComponentActivity() {
                 postUi {
                     finishTestProgress()
                     toast(t("آزمون اتصال کامل شد", "Connection testing complete"))
-                    if (currentTab == Tab.SOURCES) refreshSourcesInPlace() else showTab(currentTab, forceRefresh = true)
+                    refreshProxyResultsAfterTest()
+                    when (currentTab) {
+                        Tab.HOME -> showTab(Tab.HOME, forceRefresh = true)
+                        Tab.SOURCES -> refreshSourcesInPlace()
+                        else -> Unit
+                    }
                 }
             } catch (error: Exception) {
                 postUi { finishTestProgress(); toast(t("آزمون کامل نشد: ${error.message ?: "خطای ناشناخته"}", "Testing did not finish: ${error.message ?: "Unknown error"}")) }
@@ -957,6 +962,14 @@ class MainActivity : ComponentActivity() {
 
     private fun refreshProxyResultsAfterFetch() {
         // Freshly fetched entries are always visible without requiring a manual tap on All.
+        proxyFilter = null
+        favoritesOnly = false
+        refreshTab(Tab.PROXIES)
+    }
+
+    private fun refreshProxyResultsAfterTest() {
+        // Tested records may no longer match the previously selected status filter.
+        // Return to All and rebuild this tab so the changed result is visible immediately.
         proxyFilter = null
         favoritesOnly = false
         refreshTab(Tab.PROXIES)
