@@ -19,12 +19,7 @@
 
 ## 📱 App Preview · پیش‌نمایش برنامه
 
-<p align="center">
-  <img src="docs/screenshots/home.webp" width="220" alt="MTLink home screen" />
-  <img src="docs/screenshots/proxies.webp" width="220" alt="MTLink proxies screen" />
-  <img src="docs/screenshots/sources.webp" width="220" alt="MTLink sources screen" />
-  <img src="docs/screenshots/settings.webp" width="220" alt="MTLink settings screen" />
-</p>
+<p align="center"><img src="docs/screenshots/home.webp" width="190" alt="MTLink home screen" /><img src="docs/screenshots/proxies.webp" width="190" alt="MTLink proxies screen" /><img src="docs/screenshots/sources.webp" width="190" alt="MTLink sources screen" /><img src="docs/screenshots/settings.webp" width="190" alt="MTLink settings screen" /></p>
 
 ---
 
