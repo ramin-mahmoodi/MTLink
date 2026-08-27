@@ -14,7 +14,9 @@ import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.widget.EditText
@@ -35,6 +37,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.abs
 
 class MainActivity : ComponentActivity() {
     private lateinit var store: MTLinkStore
@@ -66,6 +69,8 @@ class MainActivity : ComponentActivity() {
     private var homeProgressTrack: FrameLayout? = null
     private var homeProgressFill: View? = null
     private var homeProgressText: TextView? = null
+    private val tabViews = mutableMapOf<Tab, View>()
+    private var activeTabView: View? = null
     private val tabInterpolator = DecelerateInterpolator(1.7f)
 
     private enum class Tab { HOME, PROXIES, SOURCES, SETTINGS }
@@ -117,7 +122,7 @@ class MainActivity : ComponentActivity() {
     private fun buildRoot(): View {
         val rootDirection = if (ui.isRtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
         val frame = FrameLayout(this).apply { layoutDirection = rootDirection }
-        val base = FrameLayout(this).apply {
+        val base = TabSwipeFrame(this).apply {
             layoutDirection = rootDirection
             setBackgroundColor(color(R.color.mt_background))
             content = FrameLayout(context).apply {
@@ -131,6 +136,9 @@ class MainActivity : ComponentActivity() {
             orientation = LinearLayout.HORIZONTAL
             layoutDirection = rootDirection
             gravity = Gravity.CENTER
+            setBackgroundColor(Color.TRANSPARENT)
+            background = null
+            elevation = 0f
             setPadding(dp(2), dp(4), dp(2), dp(4))
         }
         loadingOverlay = LoadingOverlay(this)
@@ -151,12 +159,12 @@ class MainActivity : ComponentActivity() {
         return frame
     }
 
-    private fun showTab(tab: Tab) {
+    private fun showTab(tab: Tab, forceRefresh: Boolean = false) {
         val previous = currentTab
         currentTab = tab
         applyUiDirection(window.decorView, content, nav)
-        val hadContent = content.childCount > 0
-        content.removeAllViews(); nav.removeAllViews()
+        val hadContent = activeTabView != null
+        nav.removeAllViews()
         navItems().forEach { item ->
             nav.addView(navItem(item), LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT).apply { marginStart = dp(1); marginEnd = dp(1) })
         }
@@ -165,22 +173,82 @@ class MainActivity : ComponentActivity() {
         nav.scaleX = if (hadContent) 0.985f else 1f
         nav.scaleY = if (hadContent) 0.985f else 1f
         if (hadContent) nav.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(160).setInterpolator(tabInterpolator).start()
-        val view = when (tab) {
-            Tab.HOME -> homeView()
-            Tab.SOURCES -> sourcesView()
-            Tab.PROXIES -> proxiesView()
-            Tab.SETTINGS -> settingsView()
+        val view = if (forceRefresh || tabViews[tab] == null) {
+            tabViews.remove(tab)?.let { cached -> content.removeView(cached) }
+            when (tab) {
+                Tab.HOME -> homeView()
+                Tab.SOURCES -> sourcesView()
+                Tab.PROXIES -> proxiesView()
+                Tab.SETTINGS -> settingsView()
+            }.also { created -> tabViews[tab] = created }
+        } else {
+            requireNotNull(tabViews[tab])
         }
         applyUiDirection(view)
-        if (hadContent) {
+        if (activeTabView !== view) {
+            content.removeAllViews()
             val towardEnd = tab.ordinal > previous.ordinal
             val direction = if (ui.isRtl) if (towardEnd) -1 else 1 else if (towardEnd) 1 else -1
-            view.alpha = 0f
-            view.translationX = dp(18).toFloat() * direction
+            view.alpha = if (hadContent) 0f else 1f
+            view.translationX = if (hadContent) dp(18).toFloat() * direction else 0f
             content.addView(view)
-            view.animate().alpha(1f).translationX(0f).setDuration(220).setInterpolator(tabInterpolator).start()
-        } else {
-            content.addView(view)
+            if (hadContent) view.animate().alpha(1f).translationX(0f).setDuration(220).setInterpolator(tabInterpolator).start()
+            activeTabView = view
+        }
+    }
+
+    private fun switchTabBySwipe(deltaX: Float) {
+        val tabs = navItems()
+        val currentIndex = tabs.indexOf(currentTab)
+        val nextIndex = currentIndex + if (deltaX < 0f) 1 else -1
+        if (nextIndex in tabs.indices) showTab(tabs[nextIndex])
+    }
+
+    private inner class TabSwipeFrame(context: Context) : FrameLayout(context) {
+        private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+        private var downX = 0f
+        private var downY = 0f
+        private var intercepting = false
+
+        override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    downX = event.rawX
+                    downY = event.rawY
+                    intercepting = false
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = event.rawX - downX
+                    val dy = event.rawY - downY
+                    if (!intercepting && abs(dx) > touchSlop && abs(dx) > abs(dy) && !startsOnHorizontalGestureView(downX, downY)) {
+                        intercepting = true
+                        return true
+                    }
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> intercepting = false
+            }
+            return intercepting
+        }
+
+        override fun onTouchEvent(event: MotionEvent): Boolean {
+            if (event.actionMasked == MotionEvent.ACTION_UP && intercepting) {
+                val dx = event.rawX - downX
+                if (abs(dx) >= dp(68)) switchTabBySwipe(dx)
+                intercepting = false
+            } else if (event.actionMasked == MotionEvent.ACTION_CANCEL) {
+                intercepting = false
+            }
+            return true
+        }
+
+        private fun startsOnHorizontalGestureView(rawX: Float, rawY: Float): Boolean {
+            val rect = android.graphics.Rect()
+            fun findScrollableChild(view: View): Boolean {
+                val isScrollableHorizontally = view is RecyclerView || view is HorizontalScrollView
+                if (isScrollableHorizontally && view.getGlobalVisibleRect(rect) && rect.contains(rawX.toInt(), rawY.toInt())) return true
+                return (view as? ViewGroup)?.let { group -> (0 until group.childCount).any { findScrollableChild(group.getChildAt(it)) } } ?: false
+            }
+            return findScrollableChild(content)
         }
     }
 
@@ -200,10 +268,9 @@ class MainActivity : ComponentActivity() {
             Tab.SETTINGS -> R.drawable.ic_nav_settings
         }
         return LinearLayout(this).apply {
-            gravity = Gravity.CENTER_VERTICAL
+            gravity = Gravity.CENTER
             minimumWidth = dp(48)
             setPadding(dp(12), 0, dp(12), 0)
-            gravity = Gravity.CENTER
             applyUiDirection(this)
             alpha = if (selected) 0f else 1f
             background = rounded(
@@ -287,12 +354,12 @@ class MainActivity : ComponentActivity() {
             applyUiDirection(this)
         }
         listOf(null to t("همه", "All"), ProxyStatus.REACHABLE to t("معتبر", "Ready"), ProxyStatus.UNTESTED to t("تست‌نشده", "Untested"), ProxyStatus.UNREACHABLE to t("ناموفق", "Failed")).forEach { (status, title) ->
-            val chip = action(title) { proxyFilter = status; favoritesOnly = false; showTab(Tab.PROXIES) }
+            val chip = action(title) { proxyFilter = status; favoritesOnly = false; showTab(Tab.PROXIES, forceRefresh = true) }
             chip.setTextColor(if (!favoritesOnly && proxyFilter == status) color(R.color.mt_background) else color(R.color.mt_primary))
             chip.background = rounded(if (!favoritesOnly && proxyFilter == status) color(R.color.mt_primary) else color(R.color.mt_surface), color(R.color.mt_border), 12)
             filters.addView(chip, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(39)).apply { marginEnd = dp(7) })
         }
-        val favoriteChip = action(t("علاقه‌مندی", "Favorites")) { favoritesOnly = true; proxyFilter = null; showTab(Tab.PROXIES) }
+        val favoriteChip = action(t("علاقه‌مندی", "Favorites")) { favoritesOnly = true; proxyFilter = null; showTab(Tab.PROXIES, forceRefresh = true) }
         favoriteChip.setTextColor(if (favoritesOnly) color(R.color.mt_background) else color(R.color.mt_primary))
         favoriteChip.background = rounded(if (favoritesOnly) color(R.color.mt_primary) else color(R.color.mt_surface), color(R.color.mt_border), 12)
         filters.addView(favoriteChip, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(39)))
@@ -397,7 +464,7 @@ class MainActivity : ComponentActivity() {
             prefs = prefs.copy(periodicTestEnabled = value)
             store.saveAppPreferences(prefs)
             PeriodicTestScheduler.apply(this@MainActivity, prefs)
-            showTab(Tab.SETTINGS)
+            showTab(Tab.SETTINGS, forceRefresh = true)
         })
         if (prefs.periodicTestEnabled) {
             fetchAndTesting.addView(divider())
@@ -426,6 +493,7 @@ class MainActivity : ComponentActivity() {
                 store.saveAppPreferences(prefs)
                 ui = UiText(prefs.language)
                 dialog.dismiss()
+                invalidateTabCache()
                 showTab(Tab.SETTINGS)
             }
             .setNegativeButton(t("انصراف", "Cancel"), null)
@@ -460,7 +528,7 @@ class MainActivity : ComponentActivity() {
             .setSingleChoiceItems(options.map { "$it ${t("ثانیه", "seconds")}" }.toTypedArray(), options.indexOf(prefs.testTimeoutSeconds)) { dialog, index ->
                 store.saveAppPreferences(prefs.copy(testTimeoutSeconds = options[index]))
                 dialog.dismiss()
-                showTab(Tab.SETTINGS)
+                showTab(Tab.SETTINGS, forceRefresh = true)
             }
             .setNegativeButton(t("انصراف", "Cancel"), null)
             .show().applyDialogDirection()
@@ -474,7 +542,7 @@ class MainActivity : ComponentActivity() {
             .setSingleChoiceItems(options.map { "$it ${t("اتصال", "connections")}" }.toTypedArray(), options.indexOf(prefs.testConcurrency)) { dialog, index ->
                 store.saveAppPreferences(prefs.copy(testConcurrency = options[index]))
                 dialog.dismiss()
-                showTab(Tab.SETTINGS)
+                showTab(Tab.SETTINGS, forceRefresh = true)
             }
             .setNegativeButton(t("انصراف", "Cancel"), null)
             .show().applyDialogDirection()
@@ -490,7 +558,7 @@ class MainActivity : ComponentActivity() {
                 store.saveAppPreferences(updated)
                 PeriodicTestScheduler.apply(this, updated)
                 dialog.dismiss()
-                showTab(Tab.SETTINGS)
+                showTab(Tab.SETTINGS, forceRefresh = true)
             }
             .setNegativeButton(t("انصراف", "Cancel"), null)
             .show().applyDialogDirection()
@@ -754,7 +822,7 @@ class MainActivity : ComponentActivity() {
                     if (errors > 0) toast(t("$errors منبع در دسترس نبود", "$errors sources were unavailable"))
                     if (prefs.autoTestAfterFetch && persisted.isNotEmpty()) testAll()
                     else if (currentTab == Tab.SOURCES) refreshSourcesInPlace()
-                    else showTab(currentTab)
+                    else showTab(currentTab, forceRefresh = true)
                 }
             } catch (error: Throwable) {
                 postUi {
@@ -786,7 +854,7 @@ class MainActivity : ComponentActivity() {
                 postUi {
                     finishTestProgress()
                     toast(t("آزمون اتصال کامل شد", "Connection testing complete"))
-                    if (currentTab == Tab.SOURCES) refreshSourcesInPlace() else showTab(currentTab)
+                    if (currentTab == Tab.SOURCES) refreshSourcesInPlace() else showTab(currentTab, forceRefresh = true)
                 }
             } catch (error: Exception) {
                 postUi { finishTestProgress(); toast(t("آزمون کامل نشد: ${error.message ?: "خطای ناشناخته"}", "Testing did not finish: ${error.message ?: "Unknown error"}")) }
@@ -848,7 +916,7 @@ class MainActivity : ComponentActivity() {
             try {
                 val updated = ProxyTestRunner.test(proxy, preferences.testTimeoutSeconds)
                 store.saveProxies(store.proxies().map { if (it.id == proxy.id) updated else it })
-                postUi { loadingOverlay.hideLoading(); toast(if (updated.status == ProxyStatus.REACHABLE) t("اتصال برقرار شد", "Connection available") else t("اتصال ناموفق بود", "Connection failed")); showTab(currentTab) }
+                postUi { loadingOverlay.hideLoading(); toast(if (updated.status == ProxyStatus.REACHABLE) t("اتصال برقرار شد", "Connection available") else t("اتصال ناموفق بود", "Connection failed")); showTab(currentTab, forceRefresh = true) }
             } catch (error: Exception) {
                 postUi { loadingOverlay.hideLoading(); toast(t("آزمون ناموفق بود", "Test failed")) }
             }
@@ -887,7 +955,7 @@ class MainActivity : ComponentActivity() {
         .setTitle(t("پاک‌سازی پراکسی‌ها", "Clear proxies"))
         .setMessage(t("همهٔ نتایج ذخیره‌شده از این دستگاه حذف می‌شوند.", "All stored results will be removed from this device."))
         .setNegativeButton(t("انصراف", "Cancel"), null)
-        .setPositiveButton(t("پاک‌سازی", "Clear")) { _, _ -> store.clearProxies(); showTab(currentTab) }
+        .setPositiveButton(t("پاک‌سازی", "Clear")) { _, _ -> store.clearProxies(); showTab(currentTab, forceRefresh = true) }
         .show().applyDialogDirection()
     private fun scroll(block: LinearLayout.() -> Unit): ScrollView = ScrollView(this).apply {
         applyUiDirection(this)
@@ -1108,6 +1176,11 @@ class MainActivity : ComponentActivity() {
                 view.gravity = if (ui.isRtl) Gravity.RIGHT else Gravity.LEFT
             }
         }
+    }
+    private fun invalidateTabCache() {
+        content.removeAllViews()
+        tabViews.clear()
+        activeTabView = null
     }
     private fun color(id: Int) = getColor(id)
     private fun isDarkTheme() = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
