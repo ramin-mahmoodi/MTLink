@@ -23,6 +23,7 @@ class ProxyAdapter(
     private val ui: UiText,
     private val onClick: (ProxyRecord) -> Unit,
     private val onAction: (ProxyRecord, SwipeAction) -> Unit,
+    private val elevatedCards: Boolean = true,
 ) : RecyclerView.Adapter<ProxyAdapter.ProxyHolder>() {
     private var items: List<ProxyRecord> = emptyList()
     private val motion = DecelerateInterpolator(1.65f)
@@ -77,7 +78,7 @@ class ProxyAdapter(
             layoutDirection = if (ui.isRtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
             setPadding(dp(14), dp(13), dp(13), dp(13))
             background = rounded(ContextCompat.getColor(context, R.color.mt_surface_raised), ContextCompat.getColor(context, R.color.mt_border), 20)
-            elevation = dp(2).toFloat()
+            elevation = if (elevatedCards) dp(2).toFloat() else 0f
         }
         val dot = TextView(context).apply {
             gravity = Gravity.CENTER

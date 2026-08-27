@@ -167,17 +167,24 @@ class MainActivity : ComponentActivity() {
             addView(content)
         }
         nav = FrameLayout(this).apply {
-            layoutDirection = rootDirection
-            background = rounded(color(R.color.mt_surface_raised), color(R.color.mt_border), 26)
+            // fixed: Geometry remains physical LTR; Persian mirrors only the order, preventing RTL margin overlap.
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
+            background = rounded(color(R.color.mt_surface_raised), color(R.color.mt_border), 28)
             elevation = dp(2).toFloat()
             clipToPadding = false
             clipChildren = false
         }
-        navIndicator = View(this).apply { background = rounded(color(R.color.mt_primary_soft), color(R.color.mt_border), 26) }
-        nav.addView(navIndicator, FrameLayout.LayoutParams(dp(116), dp(48)).apply { leftMargin = dp(8); topMargin = dp(4) })
+        navIndicator = View(this).apply { background = rounded(color(R.color.mt_primary_soft), color(R.color.mt_border), 24) }
+        nav.addView(navIndicator, FrameLayout.LayoutParams(0, dp(48)).apply { leftMargin = dp(8); topMargin = dp(4) })
+        nav.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            if (navButtons.isNotEmpty()) animateNavigationSelection(animate = false)
+        }
         loadingOverlay = LoadingOverlay(this)
         frame.addView(base, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        frame.addView(nav, FrameLayout.LayoutParams(dp(288), dp(56), Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL))
+        frame.addView(nav, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(56), Gravity.BOTTOM).apply {
+            marginStart = dp(18)
+            marginEnd = dp(18)
+        })
         frame.addView(loadingOverlay, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         ViewCompat.setOnApplyWindowInsetsListener(frame) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -204,16 +211,16 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun renderNavigation(animate: Boolean) {
-        applyUiDirection(window.decorView, content, nav)
+        applyUiDirection(window.decorView, content)
         if (navButtons.isEmpty()) {
-            navItems().forEach { tab ->
+            navLayoutItems().forEach { tab ->
                 val button = createNavButton(tab)
                 navButtons[tab] = button
                 nav.addView(button.root, FrameLayout.LayoutParams(dp(48), dp(48)).apply { topMargin = dp(4) })
             }
         }
         navButtons.forEach { (tab, button) ->
-            button.root.layoutDirection = if (ui.isRtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
+            button.root.layoutDirection = View.LAYOUT_DIRECTION_LTR
             button.icon.contentDescription = tabTitle(tab)
             button.label.text = tabTitle(tab)
         }
@@ -230,10 +237,13 @@ class MainActivity : ComponentActivity() {
     private fun tabBounds(selectedTab: Tab): Map<Tab, TabBounds> {
         val bounds = mutableMapOf<Tab, TabBounds>()
         var left = dp(8)
-        navItems().forEach { tab ->
-            val width = if (tab == selectedTab) dp(116) else dp(48)
+        val availableWidth = (if (nav.width > 0) nav.width else resources.displayMetrics.widthPixels - dp(36)).coerceAtLeast(dp(260)) - dp(16)
+        val selectedWidth = minOf(dp(128), (availableWidth - dp(3 * 48)).coerceAtLeast(dp(96)))
+        val unselectedWidth = ((availableWidth - selectedWidth) / 3).coerceAtLeast(dp(48))
+        navLayoutItems().forEach { tab ->
+            val width = if (tab == selectedTab) selectedWidth else unselectedWidth
             bounds[tab] = TabBounds(left, width)
-            left += width + dp(4)
+            left += width
         }
         return bounds
     }
@@ -368,6 +378,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun navItems() = listOf(Tab.HOME, Tab.PROXIES, Tab.SOURCES, Tab.SETTINGS)
+    private fun navLayoutItems() = if (ui.isRtl) navItems().reversed() else navItems()
 
     private fun homeView(): View = scroll {
         addView(brandHeader())
@@ -1007,7 +1018,7 @@ class MainActivity : ComponentActivity() {
         clipToPadding = false
         applyUiDirection(this)
         lateinit var adapter: ProxyAdapter
-        adapter = ProxyAdapter(ui, { }, { proxy, action -> handleSwipeAction(proxy, action, adapter) })
+        adapter = ProxyAdapter(ui, { }, { proxy, action -> handleSwipeAction(proxy, action, adapter) }, elevatedCards = false)
         adapter.submit(items)
         this.adapter = adapter
     }
