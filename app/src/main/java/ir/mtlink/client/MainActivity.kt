@@ -169,7 +169,7 @@ class MainActivity : ComponentActivity() {
         nav = FrameLayout(this).apply {
             // fixed: Geometry remains physical LTR; Persian mirrors only the order, preventing RTL margin overlap.
             layoutDirection = View.LAYOUT_DIRECTION_LTR
-            background = rounded(color(R.color.mt_surface_raised), color(R.color.mt_border), 28)
+            background = rounded(color(R.color.mt_surface_raised), color(R.color.mt_border), 24)
             elevation = dp(2).toFloat()
             clipToPadding = false
             clipChildren = false
@@ -182,8 +182,8 @@ class MainActivity : ComponentActivity() {
         loadingOverlay = LoadingOverlay(this)
         frame.addView(base, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         frame.addView(nav, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(56), Gravity.BOTTOM).apply {
-            marginStart = dp(18)
-            marginEnd = dp(18)
+            marginStart = dp(24)
+            marginEnd = dp(24)
         })
         frame.addView(loadingOverlay, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         ViewCompat.setOnApplyWindowInsetsListener(frame) { _, insets ->
@@ -237,7 +237,7 @@ class MainActivity : ComponentActivity() {
     private fun tabBounds(selectedTab: Tab): Map<Tab, TabBounds> {
         val bounds = mutableMapOf<Tab, TabBounds>()
         var left = dp(8)
-        val availableWidth = (if (nav.width > 0) nav.width else resources.displayMetrics.widthPixels - dp(36)).coerceAtLeast(dp(260)) - dp(16)
+        val availableWidth = (if (nav.width > 0) nav.width else resources.displayMetrics.widthPixels - dp(48)).coerceAtLeast(dp(260)) - dp(16)
         val selectedWidth = minOf(dp(128), (availableWidth - dp(3 * 48)).coerceAtLeast(dp(96)))
         val unselectedWidth = ((availableWidth - selectedWidth) / 3).coerceAtLeast(dp(48))
         navLayoutItems().forEach { tab ->
