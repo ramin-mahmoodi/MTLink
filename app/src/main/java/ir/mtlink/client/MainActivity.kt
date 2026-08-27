@@ -1,5 +1,6 @@
 package ir.mtlink.client
 
+import android.animation.ValueAnimator
 import android.app.AlertDialog
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -15,7 +16,7 @@ import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.View
 import android.view.ViewGroup
-import android.view.animation.DecelerateInterpolator
+import android.view.animation.PathInterpolator
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -40,7 +41,8 @@ import kotlin.math.abs
 class MainActivity : ComponentActivity() {
     private lateinit var store: MTLinkStore
     private lateinit var content: ViewPager2
-    private lateinit var nav: LinearLayout
+    private lateinit var nav: FrameLayout
+    private lateinit var navIndicator: View
     private lateinit var loadingOverlay: LoadingOverlay
     private val io = Executors.newFixedThreadPool(4)
     private var currentTab = Tab.HOME
@@ -69,11 +71,15 @@ class MainActivity : ComponentActivity() {
     private var homeProgressText: TextView? = null
     private val tabViews = mutableMapOf<Tab, View>()
     private val pageContainers = mutableMapOf<Tab, FrameLayout>()
+    private val navButtons = mutableMapOf<Tab, NavButton>()
     private lateinit var tabPagerAdapter: TabPagerAdapter
-    private val tabInterpolator = DecelerateInterpolator(2.15f)
+    private var navSelectionAnimator: ValueAnimator? = null
+    private val tabInterpolator = PathInterpolator(0.16f, 1f, 0.3f, 1f)
 
     private enum class Tab { HOME, PROXIES, SOURCES, SETTINGS }
     private enum class SourceFilter { ALL, ENABLED, ERRORS }
+    private data class TabBounds(val left: Int, val width: Int)
+    private data class NavButton(val root: FrameLayout, val icon: ImageView, val label: TextView)
 
     override fun attachBaseContext(newBase: Context) {
         val selectedTheme = MTLinkStore(newBase).appPreferences().theme
@@ -144,17 +150,18 @@ class MainActivity : ComponentActivity() {
             }
             addView(content)
         }
-        nav = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
+        nav = FrameLayout(this).apply {
             layoutDirection = rootDirection
-            gravity = Gravity.CENTER
             background = rounded(color(R.color.mt_surface_raised), color(R.color.mt_border), 26)
             elevation = dp(2).toFloat()
-            setPadding(dp(8), dp(4), dp(8), dp(4))
+            clipToPadding = false
+            clipChildren = false
         }
+        navIndicator = View(this).apply { background = rounded(color(R.color.mt_primary_soft), color(R.color.mt_border), 26) }
+        nav.addView(navIndicator, FrameLayout.LayoutParams(dp(116), dp(48)).apply { leftMargin = dp(8); topMargin = dp(4) })
         loadingOverlay = LoadingOverlay(this)
         frame.addView(base, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        frame.addView(nav, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(56), Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL))
+        frame.addView(nav, FrameLayout.LayoutParams(dp(288), dp(56), Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL))
         frame.addView(loadingOverlay, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         ViewCompat.setOnApplyWindowInsetsListener(frame) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -182,16 +189,123 @@ class MainActivity : ComponentActivity() {
 
     private fun renderNavigation(animate: Boolean) {
         applyUiDirection(window.decorView, content, nav)
-        nav.removeAllViews()
-        navItems().forEach { item ->
-            nav.addView(navItem(item), LinearLayout.LayoutParams(if (item == currentTab) dp(126) else dp(52), ViewGroup.LayoutParams.MATCH_PARENT).apply { marginStart = dp(2); marginEnd = dp(2) })
+        if (navButtons.isEmpty()) {
+            navItems().forEach { tab ->
+                val button = createNavButton(tab)
+                navButtons[tab] = button
+                nav.addView(button.root, FrameLayout.LayoutParams(dp(48), dp(48)).apply { topMargin = dp(4) })
+            }
         }
-        if (animate) {
-            nav.animate().cancel()
-            nav.alpha = 0.96f
-            nav.scaleX = 0.995f
-            nav.scaleY = 0.995f
-            nav.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(105).setInterpolator(tabInterpolator).start()
+        navButtons.forEach { (tab, button) ->
+            button.root.layoutDirection = if (ui.isRtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
+            button.icon.contentDescription = tabTitle(tab)
+            button.label.text = tabTitle(tab)
+        }
+        animateNavigationSelection(animate)
+    }
+
+    private fun tabTitle(tab: Tab) = when (tab) {
+        Tab.HOME -> t("خانه", "Home")
+        Tab.SOURCES -> t("منابع", "Sources")
+        Tab.PROXIES -> t("پراکسی‌ها", "Proxies")
+        Tab.SETTINGS -> t("تنظیمات", "Settings")
+    }
+
+    private fun tabBounds(selectedTab: Tab): Map<Tab, TabBounds> {
+        val bounds = mutableMapOf<Tab, TabBounds>()
+        var left = dp(8)
+        navItems().forEach { tab ->
+            val width = if (tab == selectedTab) dp(116) else dp(48)
+            bounds[tab] = TabBounds(left, width)
+            left += width + dp(4)
+        }
+        return bounds
+    }
+
+    private fun createNavButton(tab: Tab): NavButton {
+        val root = FrameLayout(this).apply {
+            setOnClickListener { showTab(tab) }
+            setOnTouchListener { view, event ->
+                when (event.actionMasked) {
+                    android.view.MotionEvent.ACTION_DOWN -> view.animate().scaleX(0.97f).scaleY(0.97f).setDuration(65).start()
+                    android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> view.animate().scaleX(1f).scaleY(1f).setDuration(130).setInterpolator(tabInterpolator).start()
+                }
+                false
+            }
+        }
+        val content = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+        val icon = ImageView(this).apply { setImageResource(tabIcon(tab)); contentDescription = tabTitle(tab) }
+        val label = label(tabTitle(tab), 12, color(R.color.mt_primary_light), true).apply {
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            gravity = Gravity.CENTER
+            textAlignment = View.TEXT_ALIGNMENT_CENTER
+            visibility = View.GONE
+        }
+        content.addView(icon, LinearLayout.LayoutParams(dp(22), dp(22)))
+        content.addView(label, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(7) })
+        root.addView(content, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER))
+        return NavButton(root, icon, label)
+    }
+
+    private fun tabIcon(tab: Tab) = when (tab) {
+        Tab.HOME -> R.drawable.ic_nav_home
+        Tab.PROXIES -> R.drawable.ic_nav_proxies
+        Tab.SOURCES -> R.drawable.ic_nav_sources
+        Tab.SETTINGS -> R.drawable.ic_nav_settings
+    }
+
+    private fun animateNavigationSelection(animate: Boolean) {
+        val targetBounds = tabBounds(currentTab)
+        val indicatorParams = navIndicator.layoutParams as FrameLayout.LayoutParams
+        val startIndicatorLeft = indicatorParams.leftMargin
+        val startIndicatorWidth = indicatorParams.width
+        val targetIndicator = requireNotNull(targetBounds[currentTab])
+        val starts = navButtons.mapValues { (_, button) ->
+            val params = button.root.layoutParams as FrameLayout.LayoutParams
+            TabBounds(params.leftMargin, params.width)
+        }
+        fun applyAt(progress: Float) {
+            fun between(from: Int, to: Int) = (from + ((to - from) * progress)).toInt()
+            indicatorParams.leftMargin = between(startIndicatorLeft, targetIndicator.left)
+            indicatorParams.width = between(startIndicatorWidth, targetIndicator.width)
+            navIndicator.layoutParams = indicatorParams
+            navButtons.forEach { (tab, button) ->
+                val from = requireNotNull(starts[tab])
+                val to = requireNotNull(targetBounds[tab])
+                (button.root.layoutParams as FrameLayout.LayoutParams).apply {
+                    leftMargin = between(from.left, to.left)
+                    width = between(from.width, to.width)
+                    button.root.layoutParams = this
+                }
+            }
+        }
+        navSelectionAnimator?.cancel()
+        if (animate && nav.width > 0) {
+            navSelectionAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = 220
+                interpolator = tabInterpolator
+                addUpdateListener { applyAt(it.animatedValue as Float) }
+                start()
+            }
+        } else applyAt(1f)
+        navButtons.forEach { (tab, button) ->
+            val selected = tab == currentTab
+            button.icon.setColorFilter(if (selected) color(R.color.mt_primary_light) else color(R.color.mt_muted))
+            if (selected) {
+                button.label.visibility = View.VISIBLE
+                if (animate) {
+                    button.label.alpha = 0f
+                    button.label.translationY = dp(3).toFloat()
+                    button.label.animate().alpha(1f).translationY(0f).setDuration(170).setInterpolator(tabInterpolator).start()
+                } else {
+                    button.label.alpha = 1f
+                    button.label.translationY = 0f
+                }
+            } else if (button.label.visibility == View.VISIBLE) {
+                if (animate) button.label.animate().alpha(0f).translationY(-dp(2).toFloat()).setDuration(90).withEndAction { button.label.visibility = View.GONE; button.label.translationY = 0f }.start()
+                else button.label.visibility = View.GONE
+            }
         }
     }
 
@@ -237,60 +351,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun navItems() = listOf(Tab.HOME, Tab.PROXIES, Tab.SOURCES, Tab.SETTINGS)
-    private fun navItem(tab: Tab): View {
-        val selected = tab == currentTab
-        val title = when (tab) {
-            Tab.HOME -> t("خانه", "Home")
-            Tab.SOURCES -> t("منابع", "Sources")
-            Tab.PROXIES -> t("پراکسی‌ها", "Proxies")
-            Tab.SETTINGS -> t("تنظیمات", "Settings")
-        }
-        val iconRes = when (tab) {
-            Tab.HOME -> R.drawable.ic_nav_home
-            Tab.PROXIES -> R.drawable.ic_nav_proxies
-            Tab.SOURCES -> R.drawable.ic_nav_sources
-            Tab.SETTINGS -> R.drawable.ic_nav_settings
-        }
-        return FrameLayout(this).apply {
-            foregroundGravity = Gravity.CENTER
-            applyUiDirection(this)
-            alpha = 1f
-            background = rounded(
-                if (selected) color(R.color.mt_primary_soft) else Color.TRANSPARENT,
-                if (selected) color(R.color.mt_border) else Color.TRANSPARENT,
-                26,
-            )
-            setOnClickListener { showTab(tab) }
-            setOnTouchListener { view, event ->
-                when (event.actionMasked) {
-                    android.view.MotionEvent.ACTION_DOWN -> view.animate().scaleX(0.97f).scaleY(0.97f).setDuration(55).start()
-                    android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> view.animate().scaleX(1f).scaleY(1f).setDuration(115).setInterpolator(tabInterpolator).start()
-                }
-                false
-            }
-            val content = LinearLayout(context).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER
-                layoutDirection = if (ui.isRtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
-            }
-            val icon = ImageView(context).apply {
-                setImageResource(iconRes)
-                setColorFilter(if (selected) color(R.color.mt_primary_light) else color(R.color.mt_muted))
-                contentDescription = title
-            }
-            content.addView(icon, LinearLayout.LayoutParams(dp(22), dp(22)))
-            if (selected) {
-                val label = label(title, 12, color(R.color.mt_primary_light), true).apply {
-                    maxLines = 1
-                    ellipsize = android.text.TextUtils.TruncateAt.END
-                    gravity = Gravity.CENTER
-                    textAlignment = View.TEXT_ALIGNMENT_CENTER
-                }
-                content.addView(label, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(7) })
-            }
-            addView(content, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER))
-        }
-    }
 
     private fun homeView(): View = scroll {
         addView(brandHeader())
