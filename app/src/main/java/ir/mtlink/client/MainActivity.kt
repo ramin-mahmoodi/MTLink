@@ -174,7 +174,7 @@ class MainActivity : ComponentActivity() {
             // fixed: Geometry remains physical LTR; Persian mirrors only the order, preventing RTL margin overlap.
             layoutDirection = View.LAYOUT_DIRECTION_LTR
             background = rounded(color(R.color.mt_surface_raised), color(R.color.mt_border), 34)
-            elevation = dp(3).toFloat()
+            elevation = dp(1).toFloat()
             clipToPadding = false
             clipChildren = false
         }
@@ -197,7 +197,7 @@ class MainActivity : ComponentActivity() {
             // fixed: The pager stays edge-to-edge; the navigation is a transparent overlay, not a reserved bottom panel.
             content.setPadding(0, 0, 0, 0)
             (nav.layoutParams as FrameLayout.LayoutParams).apply {
-                bottomMargin = bars.bottom + dp(28)
+                bottomMargin = bars.bottom + dp(12)
                 nav.layoutParams = this
             }
             insets
