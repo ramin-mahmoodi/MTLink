@@ -160,9 +160,10 @@ class MainActivity : ComponentActivity() {
         ViewCompat.setOnApplyWindowInsetsListener(frame) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             base.setPadding(0, bars.top, 0, 0)
-            content.setPadding(0, 0, 0, dp(92) + bars.bottom)
+            // fixed: The pager stays edge-to-edge; the navigation is a transparent overlay, not a reserved bottom panel.
+            content.setPadding(0, 0, 0, 0)
             (nav.layoutParams as FrameLayout.LayoutParams).apply {
-                bottomMargin = bars.bottom + dp(10)
+                bottomMargin = bars.bottom + dp(28)
                 nav.layoutParams = this
             }
             insets
@@ -932,7 +933,8 @@ class MainActivity : ComponentActivity() {
         applyUiDirection(this)
         val child = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(22), dp(24), dp(30))
+            // The last row remains scrollable above the floating navigation without creating a separate bottom background.
+            setPadding(dp(24), dp(22), dp(24), dp(118))
             applyUiDirection(this)
             block()
         }
