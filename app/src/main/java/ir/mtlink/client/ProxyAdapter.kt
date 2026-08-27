@@ -173,6 +173,9 @@ class ProxyAdapter(
                     dragging = false
                     startingTranslation = holder.card.translationX
                     closingExistingRail = false
+                    // A gesture started on a proxy card belongs to the card. This prevents ViewPager2
+                    // from stealing its horizontal swipe before the action rail can open.
+                    holder.card.parent?.requestDisallowInterceptTouchEvent(true)
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
@@ -221,6 +224,7 @@ class ProxyAdapter(
                             holder.card.animate().scaleX(1f).scaleY(1f).setDuration(120).setInterpolator(motion).withEndAction { onClick(proxy) }.start()
                         }.start()
                     }
+                    holder.card.parent?.requestDisallowInterceptTouchEvent(false)
                     true
                 }
                 else -> true

@@ -72,7 +72,8 @@ class MainActivity : ComponentActivity() {
     private val navButtons = mutableMapOf<Tab, NavButton>()
     private lateinit var tabPagerAdapter: TabPagerAdapter
     private var navSelectionAnimator: ValueAnimator? = null
-    private val tabInterpolator = PathInterpolator(0.16f, 1f, 0.3f, 1f)
+    // iOS-like easing: visible horizontal travel without an abrupt end-jump.
+    private val tabInterpolator = PathInterpolator(0.22f, 0.62f, 0.28f, 1f)
 
     private enum class Tab { HOME, PROXIES, SOURCES, SETTINGS }
     private enum class SourceFilter { ALL, ENABLED, ERRORS }
@@ -169,7 +170,7 @@ class MainActivity : ComponentActivity() {
         nav = FrameLayout(this).apply {
             // fixed: Geometry remains physical LTR; Persian mirrors only the order, preventing RTL margin overlap.
             layoutDirection = View.LAYOUT_DIRECTION_LTR
-            background = rounded(color(R.color.mt_surface_raised), color(R.color.mt_border), 24)
+            background = rounded(color(R.color.mt_surface_raised), color(R.color.mt_border), 28)
             elevation = dp(2).toFloat()
             clipToPadding = false
             clipChildren = false
@@ -309,7 +310,7 @@ class MainActivity : ComponentActivity() {
         navSelectionAnimator?.cancel()
         if (animate && nav.width > 0) {
             navSelectionAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-                duration = 220
+                duration = 320
                 interpolator = tabInterpolator
                 addUpdateListener { applyAt(it.animatedValue as Float) }
                 start()
@@ -430,7 +431,7 @@ class MainActivity : ComponentActivity() {
         }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(61)))
         val list = RecyclerView(this).apply { layoutManager = LinearLayoutManager(this@MainActivity); setPadding(0, dp(16), 0, dp(12)); clipToPadding = false; applyUiDirection(this) }
         lateinit var adapter: ProxyAdapter
-        adapter = ProxyAdapter(ui, { }, { proxy, action -> handleSwipeAction(proxy, action, adapter) })
+        adapter = ProxyAdapter(ui, { }, { proxy, action -> handleSwipeAction(proxy, action, adapter) }, elevatedCards = false)
         val visible = store.proxies().filter { (proxyFilter == null || it.status == proxyFilter) && (!favoritesOnly || it.favorite) }
             .sortedWith(compareByDescending<ProxyRecord> { it.favorite }.thenBy { it.latencyMs ?: Long.MAX_VALUE })
         adapter.submit(visible)
