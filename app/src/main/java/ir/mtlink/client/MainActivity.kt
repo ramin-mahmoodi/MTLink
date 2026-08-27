@@ -377,8 +377,8 @@ class MainActivity : ComponentActivity() {
         val reachable = proxies.count { it.status == ProxyStatus.REACHABLE }
         addView(LinearLayout(this@MainActivity).apply {
             orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(22), 0, 0); applyUiDirection(this)
-            addView(statCard(R.drawable.ic_stat_globe, t("همهٔ پراکسی‌ها", "All proxies"), proxies.size, "#1A2D4F", "#14223E"), LinearLayout.LayoutParams(0, dp(118), 1f).apply { marginEnd = dp(6) })
-            addView(statCard(R.drawable.ic_stat_check, t("پراکسی‌های فعال", "Active proxies"), reachable, "#123A34", "#10251F"), LinearLayout.LayoutParams(0, dp(118), 1f).apply { marginStart = dp(6) })
+            addView(statCard(R.drawable.ic_stat_globe, t("همهٔ پراکسی‌ها", "All proxies"), proxies.size, if (isDarkTheme()) "#213D69" else "#EAF2FF", if (isDarkTheme()) "#152946" else "#F8FBFF"), LinearLayout.LayoutParams(0, dp(118), 1f).apply { marginEnd = dp(6) })
+            addView(statCard(R.drawable.ic_stat_check, t("پراکسی‌های فعال", "Active proxies"), reachable, if (isDarkTheme()) "#15473F" else "#DCF7F0", if (isDarkTheme()) "#102D2A" else "#F8FFFC"), LinearLayout.LayoutParams(0, dp(118), 1f).apply { marginStart = dp(6) })
         })
         addView(section(t("اقدام‌های سریع", "Quick actions")))
         addView(quickActionsBar())
@@ -454,8 +454,8 @@ class MainActivity : ComponentActivity() {
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, dp(18), 0, 0)
             applyUiDirection(this)
-            addView(statCard(R.drawable.ic_stat_globe, t("فعال", "Active"), activeCount, "#1A2D4F", "#14223E") { sourceActiveCountText = it }, LinearLayout.LayoutParams(0, dp(104), 1f).apply { marginEnd = dp(6) })
-            addView(statCard(R.drawable.ic_stat_check, t("خطا", "Issues"), errorCount, "#3F242D", "#291A22") { sourceIssueCountText = it }, LinearLayout.LayoutParams(0, dp(104), 1f).apply { marginStart = dp(6) })
+            addView(statCard(R.drawable.ic_stat_globe, t("فعال", "Active"), activeCount, if (isDarkTheme()) "#15473F" else "#DCF7F0", if (isDarkTheme()) "#102D2A" else "#F8FFFC") { sourceActiveCountText = it }, LinearLayout.LayoutParams(0, dp(104), 1f).apply { marginEnd = dp(6) })
+            addView(statCard(R.drawable.ic_stat_check, t("خطا", "Issues"), errorCount, if (isDarkTheme()) "#4F2935" else "#FFE5E9", if (isDarkTheme()) "#301B24" else "#FFF8F9") { sourceIssueCountText = it }, LinearLayout.LayoutParams(0, dp(104), 1f).apply { marginStart = dp(6) })
         }
         container.addView(stats)
         container.addView(homeTestProgress(Tab.SOURCES), LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12) })
@@ -1077,8 +1077,8 @@ class MainActivity : ComponentActivity() {
     }
     private fun statCard(icon: Int, label: String, number: Int, start: String, end: String, onNumberReady: ((TextView) -> Unit)? = null): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL; gravity = if (ui.isRtl) Gravity.RIGHT or Gravity.CENTER_VERTICAL else Gravity.LEFT or Gravity.CENTER_VERTICAL
-        background = if (isDarkTheme()) gradient(start, end, 20) else cardBackground(20)
-        elevation = if (isDarkTheme()) dp(1).toFloat() else 0f
+        background = gradient(start, end, 20)
+        elevation = dp(1).toFloat()
         setPadding(dp(16), dp(12), dp(16), dp(12)); applyUiDirection(this)
         addView(ImageView(context).apply { setImageResource(icon); setColorFilter(color(R.color.mt_primary)); scaleType = ImageView.ScaleType.CENTER_INSIDE }, LinearLayout.LayoutParams(dp(24), dp(24)))
         addView(this@MainActivity.label(label, 12, color(R.color.mt_primary_light), true).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })

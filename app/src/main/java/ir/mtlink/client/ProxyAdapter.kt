@@ -141,11 +141,12 @@ class ProxyAdapter(
         holder.favorite.visibility = if (proxy.favorite) View.VISIBLE else View.GONE
         holder.address.text = proxy.displayAddress()
         holder.detail.text = "${if (proxy.protocol == ProxyProtocol.MTPROTO) "MTProto" else "SOCKS5"}  ·  ${statusCopy(proxy)}"
+        val context = holder.itemView.context
         val (label, color) = when (proxy.status) {
-            ProxyStatus.REACHABLE -> (proxy.latencyMs?.let { "$it ms" } ?: ui.of("در دسترس", "Ready")) to Color.rgb(30, 171, 120)
-            ProxyStatus.UNREACHABLE -> ui.of("ناموفق", "Failed") to Color.rgb(224, 81, 99)
-            ProxyStatus.CHECKING -> ui.of("در حال تست", "Testing") to Color.rgb(99, 139, 255)
-            ProxyStatus.UNTESTED -> ui.of("تست‌نشده", "Untested") to Color.rgb(102, 125, 154)
+            ProxyStatus.REACHABLE -> (proxy.latencyMs?.let { "$it ms" } ?: ui.of("در دسترس", "Ready")) to ContextCompat.getColor(context, R.color.mt_success)
+            ProxyStatus.UNREACHABLE -> ui.of("ناموفق", "Failed") to ContextCompat.getColor(context, R.color.mt_danger)
+            ProxyStatus.CHECKING -> ui.of("در حال تست", "Testing") to ContextCompat.getColor(context, R.color.mt_accent_amber)
+            ProxyStatus.UNTESTED -> ui.of("تست‌نشده", "Untested") to ContextCompat.getColor(context, R.color.mt_accent_violet)
         }
         holder.status.text = label
         holder.status.background = rounded(color, color, 10)
