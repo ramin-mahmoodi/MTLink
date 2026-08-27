@@ -173,20 +173,20 @@ class MainActivity : ComponentActivity() {
         nav = FrameLayout(this).apply {
             // fixed: Geometry remains physical LTR; Persian mirrors only the order, preventing RTL margin overlap.
             layoutDirection = View.LAYOUT_DIRECTION_LTR
-            background = rounded(color(R.color.mt_surface_raised), color(R.color.mt_border), 32)
-            elevation = dp(2).toFloat()
+            background = rounded(color(R.color.mt_surface_raised), color(R.color.mt_border), 34)
+            elevation = dp(3).toFloat()
             clipToPadding = false
             clipChildren = false
         }
-        // Equal 8dp inset on every side: 64dp outer capsule / 48dp inner capsule.
-        navIndicator = View(this).apply { background = rounded(color(R.color.mt_primary_soft), color(R.color.mt_border), 24) }
-        nav.addView(navIndicator, FrameLayout.LayoutParams(0, dp(48)).apply { leftMargin = dp(8); topMargin = dp(8) })
+        // Telegram-style segmented capsule: a 6dp inset surrounds the selected segment on every side.
+        navIndicator = View(this).apply { background = rounded(color(R.color.mt_primary_soft), Color.TRANSPARENT, 28) }
+        nav.addView(navIndicator, FrameLayout.LayoutParams(0, dp(56)).apply { leftMargin = dp(6); topMargin = dp(6) })
         nav.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
             if (navButtons.isNotEmpty()) animateNavigationSelection(animate = false)
         }
         loadingOverlay = LoadingOverlay(this)
         frame.addView(base, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        frame.addView(nav, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(64), Gravity.BOTTOM).apply {
+        frame.addView(nav, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(68), Gravity.BOTTOM).apply {
             marginStart = dp(24)
             marginEnd = dp(24)
         })
@@ -225,7 +225,7 @@ class MainActivity : ComponentActivity() {
             navLayoutItems().forEach { tab ->
                 val button = createNavButton(tab)
                 navButtons[tab] = button
-                nav.addView(button.root, FrameLayout.LayoutParams(dp(48), dp(48)).apply { topMargin = dp(8) })
+                nav.addView(button.root, FrameLayout.LayoutParams(0, dp(56)).apply { topMargin = dp(6) })
             }
         }
         navButtons.forEach { (tab, button) ->
@@ -245,12 +245,13 @@ class MainActivity : ComponentActivity() {
 
     private fun tabBounds(selectedTab: Tab): Map<Tab, TabBounds> {
         val bounds = mutableMapOf<Tab, TabBounds>()
-        var left = dp(8)
-        val availableWidth = (if (nav.width > 0) nav.width else resources.displayMetrics.widthPixels - dp(48)).coerceAtLeast(dp(260)) - dp(16)
-        val selectedWidth = minOf(dp(128), (availableWidth - dp(3 * 48)).coerceAtLeast(dp(96)))
-        val unselectedWidth = ((availableWidth - selectedWidth) / 3).coerceAtLeast(dp(48))
-        navLayoutItems().forEach { tab ->
-            val width = if (tab == selectedTab) selectedWidth else unselectedWidth
+        val leftInset = dp(6)
+        val navWidth = (if (nav.width > 0) nav.width else resources.displayMetrics.widthPixels - dp(48)).coerceAtLeast(dp(244))
+        val usableWidth = navWidth - (leftInset * 2)
+        var left = leftInset
+        navLayoutItems().forEachIndexed { index, tab ->
+            val remainingTabs = navItems().size - index
+            val width = (leftInset + usableWidth - left) / remainingTabs
             bounds[tab] = TabBounds(left, width)
             left += width
         }
@@ -268,17 +269,17 @@ class MainActivity : ComponentActivity() {
                 false
             }
         }
-        val content = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+        val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
         val icon = ImageView(this).apply { setImageResource(tabIcon(tab)); contentDescription = tabTitle(tab) }
         val label = label(tabTitle(tab), 12, color(R.color.mt_primary_light), true).apply {
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
             gravity = Gravity.CENTER
             textAlignment = View.TEXT_ALIGNMENT_CENTER
-            visibility = View.GONE
+            visibility = View.VISIBLE
         }
-        content.addView(icon, LinearLayout.LayoutParams(dp(22), dp(22)))
-        content.addView(label, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(7) })
+        content.addView(icon, LinearLayout.LayoutParams(dp(24), dp(24)))
+        content.addView(label, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(2) })
         root.addView(content, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER))
         return NavButton(root, icon, label)
     }
@@ -293,54 +294,35 @@ class MainActivity : ComponentActivity() {
     private fun animateNavigationSelection(animate: Boolean) {
         val targetBounds = tabBounds(currentTab)
         val indicatorParams = navIndicator.layoutParams as FrameLayout.LayoutParams
-        val startIndicatorLeft = indicatorParams.leftMargin
-        val startIndicatorWidth = indicatorParams.width
         val targetIndicator = requireNotNull(targetBounds[currentTab])
-        val starts = navButtons.mapValues { (_, button) ->
-            val params = button.root.layoutParams as FrameLayout.LayoutParams
-            TabBounds(params.leftMargin, params.width)
-        }
-        fun applyAt(progress: Float) {
-            fun between(from: Int, to: Int) = (from + ((to - from) * progress)).toInt()
-            indicatorParams.leftMargin = between(startIndicatorLeft, targetIndicator.left)
-            indicatorParams.width = between(startIndicatorWidth, targetIndicator.width)
-            navIndicator.layoutParams = indicatorParams
-            navButtons.forEach { (tab, button) ->
-                val from = requireNotNull(starts[tab])
-                val to = requireNotNull(targetBounds[tab])
-                (button.root.layoutParams as FrameLayout.LayoutParams).apply {
-                    leftMargin = between(from.left, to.left)
-                    width = between(from.width, to.width)
-                    button.root.layoutParams = this
-                }
+        val startTranslationX = navIndicator.translationX
+        val targetTranslationX = (targetIndicator.left - dp(6)).toFloat()
+        indicatorParams.leftMargin = dp(6)
+        indicatorParams.width = targetIndicator.width
+        navIndicator.layoutParams = indicatorParams
+        navButtons.forEach { (tab, button) ->
+            val bounds = requireNotNull(targetBounds[tab])
+            (button.root.layoutParams as FrameLayout.LayoutParams).apply {
+                leftMargin = bounds.left
+                width = bounds.width
+                button.root.layoutParams = this
             }
         }
         navSelectionAnimator?.cancel()
         if (animate && nav.width > 0) {
-            navSelectionAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-                duration = 360
+            navSelectionAnimator = ValueAnimator.ofFloat(startTranslationX, targetTranslationX).apply {
+                duration = 260
                 interpolator = tabInterpolator
-                addUpdateListener { applyAt(it.animatedValue as Float) }
+                addUpdateListener { navIndicator.translationX = it.animatedValue as Float }
                 start()
             }
-        } else applyAt(1f)
+        } else navIndicator.translationX = targetTranslationX
         navButtons.forEach { (tab, button) ->
             val selected = tab == currentTab
             button.icon.setColorFilter(if (selected) color(R.color.mt_primary_light) else color(R.color.mt_muted))
-            if (selected) {
-                button.label.visibility = View.VISIBLE
-                if (animate) {
-                    button.label.alpha = 0f
-                    button.label.translationY = dp(3).toFloat()
-                    button.label.animate().alpha(1f).translationY(0f).setDuration(170).setInterpolator(tabInterpolator).start()
-                } else {
-                    button.label.alpha = 1f
-                    button.label.translationY = 0f
-                }
-            } else if (button.label.visibility == View.VISIBLE) {
-                if (animate) button.label.animate().alpha(0f).translationY(-dp(2).toFloat()).setDuration(90).withEndAction { button.label.visibility = View.GONE; button.label.translationY = 0f }.start()
-                else button.label.visibility = View.GONE
-            }
+            button.label.setTextColor(if (selected) color(R.color.mt_primary_light) else color(R.color.mt_muted))
+            button.label.alpha = if (selected) 1f else .9f
+            button.label.visibility = View.VISIBLE
         }
     }
 
