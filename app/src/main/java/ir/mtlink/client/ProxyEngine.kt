@@ -45,13 +45,15 @@ object ProxyEngine {
         output.toString()
     }
 
-    fun test(proxy: ProxyRecord): ProxyRecord {
+    fun test(proxy: ProxyRecord, timeoutSeconds: Int): ProxyRecord {
+        val timeoutMillis = MTLinkStore.normalizeTestTimeout(timeoutSeconds) * 1_000
         val startedAt = System.nanoTime()
         return try {
             Socket().use { socket ->
-                socket.connect(java.net.InetSocketAddress(proxy.host, proxy.port), 5_500)
-                socket.soTimeout = 2_500
+                socket.connect(java.net.InetSocketAddress(proxy.host, proxy.port), timeoutMillis)
                 if (proxy.protocol == ProxyProtocol.SOCKS5) {
+                    val elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt).toInt()
+                    socket.soTimeout = (timeoutMillis - elapsedMillis).coerceAtLeast(1)
                     socket.getOutputStream().write(byteArrayOf(0x05, 0x01, 0x00))
                     socket.getOutputStream().flush()
                     val response = ByteArray(2)

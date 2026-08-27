@@ -39,6 +39,9 @@ class MTLinkStore(context: Context) {
         hapticsEnabled = preferences.getBoolean("haptics_enabled", true),
         // fixed: A fresh installation opens in English; any saved language remains unchanged.
         language = runCatching { AppLanguage.valueOf(preferences.getString("language", AppLanguage.EN.name) ?: AppLanguage.EN.name) }.getOrDefault(AppLanguage.EN),
+        theme = runCatching { AppTheme.valueOf(preferences.getString("theme", AppTheme.SYSTEM.name) ?: AppTheme.SYSTEM.name) }.getOrDefault(AppTheme.SYSTEM),
+        testTimeoutSeconds = normalizeTestTimeout(preferences.getInt("test_timeout_seconds", 5)),
+        testConcurrency = normalizeTestConcurrency(preferences.getInt("test_concurrency", 8)),
         periodicTestEnabled = preferences.getBoolean("periodic_test_enabled", false),
         periodicTestMinutes = preferences.getInt("periodic_test_minutes", 60).coerceAtLeast(15),
     )
@@ -48,6 +51,9 @@ class MTLinkStore(context: Context) {
             .putBoolean("auto_test_after_fetch", value.autoTestAfterFetch)
             .putBoolean("haptics_enabled", value.hapticsEnabled)
             .putString("language", value.language.name)
+            .putString("theme", value.theme.name)
+            .putInt("test_timeout_seconds", normalizeTestTimeout(value.testTimeoutSeconds))
+            .putInt("test_concurrency", normalizeTestConcurrency(value.testConcurrency))
             .putBoolean("periodic_test_enabled", value.periodicTestEnabled)
             .putInt("periodic_test_minutes", value.periodicTestMinutes.coerceAtLeast(15))
             .apply()
@@ -101,5 +107,9 @@ class MTLinkStore(context: Context) {
         )
     }
 
-    companion object { fun newId(prefix: String): String = "$prefix-${UUID.randomUUID()}" }
+    companion object {
+        fun newId(prefix: String): String = "$prefix-${UUID.randomUUID()}"
+        fun normalizeTestTimeout(value: Int) = if (value in intArrayOf(3, 5, 8)) value else 5
+        fun normalizeTestConcurrency(value: Int) = if (value in intArrayOf(4, 8, 12)) value else 8
+    }
 }

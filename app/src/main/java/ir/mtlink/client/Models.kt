@@ -4,6 +4,7 @@ enum class SourceType { AUTO, TEXT, JSON, HTML }
 enum class ProxyProtocol { MTPROTO, SOCKS5 }
 enum class ProxyStatus { UNTESTED, CHECKING, REACHABLE, UNREACHABLE }
 enum class AppLanguage { FA, EN }
+enum class AppTheme { SYSTEM, LIGHT, DARK }
 
 data class SourceDefinition(
     val id: String,
@@ -40,7 +41,10 @@ data class ProxyRecord(
 data class AppPreferences(
     val autoTestAfterFetch: Boolean = false,
     val hapticsEnabled: Boolean = true,
-    val language: AppLanguage = AppLanguage.FA,
+    val language: AppLanguage = AppLanguage.EN,
+    val theme: AppTheme = AppTheme.SYSTEM,
+    val testTimeoutSeconds: Int = 5,
+    val testConcurrency: Int = 8,
     val periodicTestEnabled: Boolean = false,
     val periodicTestMinutes: Int = 60,
 )

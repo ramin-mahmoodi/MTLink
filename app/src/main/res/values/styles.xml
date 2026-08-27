@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- fixed: SwitchCompat in Sources and Settings requires an AppCompat-derived theme. -->
-    <style name="Theme.MTLink" parent="Theme.AppCompat.NoActionBar">
+    <style name="Theme.MTLink" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="android:fontFamily">@font/vazirmatn</item>
         <item name="android:windowActionModeOverlay">true</item>
         <item name="android:colorAccent">@color/mt_primary</item>

@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="mt_background">#FF0B0F14</color>
-    <color name="mt_surface">#FF121923</color>
-    <color name="mt_surface_soft">#FF182230</color>
-    <color name="mt_surface_raised">#FF172332</color>
-    <color name="mt_surface_deep">#FF0F1620</color>
-    <color name="mt_text">#FFF2F6FC</color>
-    <color name="mt_muted">#FF93A3B8</color>
-    <color name="mt_primary">#FF6C8FFF</color>
-    <color name="mt_primary_soft">#FF21345A</color>
-    <color name="mt_primary_light">#FFC3D0FF</color>
-    <color name="mt_success">#FF38D39F</color>
-    <color name="mt_border">#FF263242</color>
-    <color name="mt_danger">#FFFF7185</color>
+    <color name="mt_background">#FFF5F7FB</color>
+    <color name="mt_surface">#FFFFFFFF</color>
+    <color name="mt_surface_soft">#FFEFF3FA</color>
+    <color name="mt_surface_raised">#FFFFFFFF</color>
+    <color name="mt_surface_deep">#FFE8EEF7</color>
+    <color name="mt_text">#FF17233A</color>
+    <color name="mt_muted">#FF66778F</color>
+    <color name="mt_primary">#FF365FC5</color>
+    <color name="mt_primary_soft">#FFE0E8FF</color>
+    <color name="mt_primary_light">#FF294EA9</color>
+    <color name="mt_success">#FF16865F</color>
+    <color name="mt_border">#FFD6DFEC</color>
+    <color name="mt_danger">#FFC53C59</color>
 </resources>

@@ -5,6 +5,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
@@ -69,11 +70,27 @@ class MainActivity : ComponentActivity() {
     private enum class Tab { HOME, PROXIES, SOURCES, SETTINGS }
     private enum class SourceFilter { ALL, ENABLED, ERRORS }
 
+    override fun attachBaseContext(newBase: Context) {
+        val selectedTheme = MTLinkStore(newBase).appPreferences().theme
+        if (selectedTheme == AppTheme.SYSTEM) {
+            super.attachBaseContext(newBase)
+            return
+        }
+        val configuration = Configuration(newBase.resources.configuration).apply {
+            val mode = if (selectedTheme == AppTheme.DARK) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO
+            uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or mode
+        }
+        super.attachBaseContext(newBase.createConfigurationContext(configuration))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, true)
         window.statusBarColor = color(R.color.mt_background)
         window.navigationBarColor = color(R.color.mt_background)
+        val isLightTheme = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK != Configuration.UI_MODE_NIGHT_YES
+        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = isLightTheme
+        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightNavigationBars = isLightTheme
         store = MTLinkStore(this)
         ui = UiText(store.appPreferences().language)
         setContentView(buildRoot())
@@ -293,29 +310,45 @@ class MainActivity : ComponentActivity() {
 
     private fun settingsView(): View = scroll {
         var prefs = store.appPreferences()
-        addView(buttonCard(t("زبان برنامه", "App language"), if (prefs.language == AppLanguage.FA) "فارسی" else "English") { chooseLanguage() })
+
+        addView(section(t("نمایش", "Appearance")))
+        val appearance = settingsGroup()
+        appearance.addView(settingsAction(t("زبان برنامه", "App language"), if (prefs.language == AppLanguage.FA) "فارسی" else "English") { chooseLanguage() })
+        appearance.addView(divider())
+        appearance.addView(settingsAction(t("تم برنامه", "App theme"), themeLabel(prefs.theme)) { chooseTheme() })
+        appearance.addView(divider())
+        appearance.addView(setting(t("بازخورد لمسی", "Haptic feedback"), t("فقط عملیات اصلی", "Only primary actions"), prefs.hapticsEnabled) { value ->
+            prefs = prefs.copy(hapticsEnabled = value)
+            store.saveAppPreferences(prefs)
+        })
+        addView(appearance)
+
         addView(section(t("دریافت و آزمون", "Fetch & testing")))
-        val settings = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL; background = cardBackground(18); applyUiDirection(this) }
-        settings.addView(setting(t("آزمون پس از دریافت", "Test after fetch"), t("فقط پس از دریافت دستی منابع اجرا می‌شود", "Runs only after a manual fetch"), prefs.autoTestAfterFetch) { value ->
+        val fetchAndTesting = settingsGroup()
+        fetchAndTesting.addView(setting(t("آزمون پس از دریافت", "Test after fetch"), t("فقط پس از دریافت دستی منابع اجرا می‌شود", "Runs only after a manual fetch"), prefs.autoTestAfterFetch) { value ->
             prefs = prefs.copy(autoTestAfterFetch = value)
             store.saveAppPreferences(prefs)
         })
-        settings.addView(divider())
-        settings.addView(setting(t("آزمون دوره‌ای", "Periodic testing"), t("فقط هنگام فعال‌سازی شما اجرا می‌شود", "Runs only when you enable it"), prefs.periodicTestEnabled) { value ->
+        fetchAndTesting.addView(divider())
+        fetchAndTesting.addView(setting(t("آزمون دوره‌ای", "Periodic testing"), t("فقط هنگام فعال‌سازی شما اجرا می‌شود", "Runs only when you enable it"), prefs.periodicTestEnabled) { value ->
             prefs = prefs.copy(periodicTestEnabled = value)
             store.saveAppPreferences(prefs)
             PeriodicTestScheduler.apply(this@MainActivity, prefs)
             showTab(Tab.SETTINGS)
         })
-        settings.addView(divider())
-        settings.addView(setting(t("بازخورد لمسی", "Haptic feedback"), t("فقط عملیات اصلی", "Only primary actions"), prefs.hapticsEnabled) { value ->
-            prefs = prefs.copy(hapticsEnabled = value)
-            store.saveAppPreferences(prefs)
-        })
-        addView(settings)
         if (prefs.periodicTestEnabled) {
-            addView(buttonCard(t("بازه آزمون دوره‌ای", "Periodic test interval"), "${prefs.periodicTestMinutes} ${t("دقیقه", "minutes")}") { choosePeriodicInterval() })
+            fetchAndTesting.addView(divider())
+            fetchAndTesting.addView(settingsAction(t("بازه آزمون دوره‌ای", "Periodic test interval"), "${prefs.periodicTestMinutes} ${t("دقیقه", "minutes")}") { choosePeriodicInterval() })
         }
+        addView(fetchAndTesting)
+
+        addView(section(t("آزمون پیشرفته", "Advanced testing")))
+        val advancedTesting = settingsGroup()
+        advancedTesting.addView(settingsAction(t("مهلت تست اتصال", "Connection timeout"), "${prefs.testTimeoutSeconds} ${t("ثانیه", "seconds")}") { chooseTestTimeout() })
+        advancedTesting.addView(divider())
+        advancedTesting.addView(settingsAction(t("اتصال هم‌زمان", "Concurrent connections"), "${prefs.testConcurrency} ${t("اتصال", "connections")}") { chooseTestConcurrency() })
+        addView(advancedTesting)
+
         addView(section(t("داده‌ها", "Data")))
         addView(buttonCard(t("پاک‌سازی پراکسی‌ها", "Clear proxies"), t("همهٔ نتایج محلی حذف می‌شوند", "All local results will be removed"), true) { confirmClear() })
     }
@@ -329,6 +362,54 @@ class MainActivity : ComponentActivity() {
                 val prefs = store.appPreferences().copy(language = if (index == 0) AppLanguage.FA else AppLanguage.EN)
                 store.saveAppPreferences(prefs)
                 ui = UiText(prefs.language)
+                dialog.dismiss()
+                showTab(Tab.SETTINGS)
+            }
+            .setNegativeButton(t("انصراف", "Cancel"), null)
+            .show().applyDialogDirection()
+    }
+
+    private fun themeLabel(theme: AppTheme) = when (theme) {
+        AppTheme.SYSTEM -> t("مطابق سیستم", "System default")
+        AppTheme.LIGHT -> t("روشن", "Light")
+        AppTheme.DARK -> t("تیره", "Dark")
+    }
+
+    private fun chooseTheme() {
+        val options = arrayOf(t("مطابق سیستم", "System default"), t("روشن", "Light"), t("تیره", "Dark"))
+        val selected = store.appPreferences().theme.ordinal
+        AlertDialog.Builder(this)
+            .setTitle(t("تم برنامه", "App theme"))
+            .setSingleChoiceItems(options, selected) { dialog, index ->
+                store.saveAppPreferences(store.appPreferences().copy(theme = AppTheme.entries[index]))
+                dialog.dismiss()
+                recreate()
+            }
+            .setNegativeButton(t("انصراف", "Cancel"), null)
+            .show().applyDialogDirection()
+    }
+
+    private fun chooseTestTimeout() {
+        val options = intArrayOf(3, 5, 8)
+        val prefs = store.appPreferences()
+        AlertDialog.Builder(this)
+            .setTitle(t("مهلت تست اتصال", "Connection timeout"))
+            .setSingleChoiceItems(options.map { "$it ${t("ثانیه", "seconds")}" }.toTypedArray(), options.indexOf(prefs.testTimeoutSeconds)) { dialog, index ->
+                store.saveAppPreferences(prefs.copy(testTimeoutSeconds = options[index]))
+                dialog.dismiss()
+                showTab(Tab.SETTINGS)
+            }
+            .setNegativeButton(t("انصراف", "Cancel"), null)
+            .show().applyDialogDirection()
+    }
+
+    private fun chooseTestConcurrency() {
+        val options = intArrayOf(4, 8, 12)
+        val prefs = store.appPreferences()
+        AlertDialog.Builder(this)
+            .setTitle(t("اتصال هم‌زمان", "Concurrent connections"))
+            .setSingleChoiceItems(options.map { "$it ${t("اتصال", "connections")}" }.toTypedArray(), options.indexOf(prefs.testConcurrency)) { dialog, index ->
+                store.saveAppPreferences(prefs.copy(testConcurrency = options[index]))
                 dialog.dismiss()
                 showTab(Tab.SETTINGS)
             }
@@ -625,13 +706,14 @@ class MainActivity : ComponentActivity() {
         val all = store.proxies()
         if (all.isEmpty()) { toast(t("ابتدا پراکسی دریافت کنید", "Fetch proxies first")); return }
         if (loadingOverlay.visibility == View.VISIBLE || testProgressActive || fetchProgressActive) return
+        val preferences = store.appPreferences()
         startTestProgress(all.size)
         io.execute {
-            val workers = Executors.newFixedThreadPool(8)
+            val workers = Executors.newFixedThreadPool(preferences.testConcurrency)
             try {
                 val done = AtomicInteger(0)
                 val checks = all.map { proxy -> workers.submit<ProxyRecord> {
-                    val tested = ProxyTestRunner.test(proxy)
+                    val tested = ProxyTestRunner.test(proxy, preferences.testTimeoutSeconds)
                     val completed = done.incrementAndGet()
                     postUi { updateTestProgress(completed) }
                     tested
@@ -697,10 +779,11 @@ class MainActivity : ComponentActivity() {
 
     private fun testOne(proxy: ProxyRecord) {
         if (loadingOverlay.visibility == View.VISIBLE) return
+        val preferences = store.appPreferences()
         loadingOverlay.showLoading(t("در حال بررسی", "Checking"), proxy.displayAddress())
         io.execute {
             try {
-                val updated = ProxyTestRunner.test(proxy)
+                val updated = ProxyTestRunner.test(proxy, preferences.testTimeoutSeconds)
                 store.saveProxies(store.proxies().map { if (it.id == proxy.id) updated else it })
                 postUi { loadingOverlay.hideLoading(); toast(if (updated.status == ProxyStatus.REACHABLE) t("اتصال برقرار شد", "Connection available") else t("اتصال ناموفق بود", "Connection failed")); showTab(currentTab) }
             } catch (error: Exception) {
@@ -912,6 +995,24 @@ class MainActivity : ComponentActivity() {
         addView(copy, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         // fixed: SwitchCompat replaces the deprecated platform Switch widget.
         addView(SwitchCompat(context).apply { isChecked = checked; setOnCheckedChangeListener { _, value -> changed(value) } })
+    }
+    private fun settingsGroup() = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        background = cardBackground(18)
+        applyUiDirection(this)
+        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(2) }
+    }
+    private fun settingsAction(title: String, body: String, click: () -> Unit) = LinearLayout(this).apply {
+        gravity = Gravity.CENTER_VERTICAL
+        minimumHeight = dp(78)
+        setPadding(dp(18), dp(14), dp(18), dp(14))
+        applyUiDirection(this)
+        setOnClickListener { click() }
+        val copy = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, dp(12), 0); applyUiDirection(this) }
+        copy.addView(label(title, 15, color(R.color.mt_text), true).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+        copy.addView(label(body, 12, color(R.color.mt_muted), false).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END; setPadding(0, dp(4), 0, 0) })
+        addView(copy, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        addView(label(if (ui.isRtl) "‹" else "›", 26, color(R.color.mt_primary), false).apply { gravity = Gravity.CENTER; textDirection = View.TEXT_DIRECTION_LTR }, LinearLayout.LayoutParams(dp(24), ViewGroup.LayoutParams.WRAP_CONTENT))
     }
     private fun buttonCard(title: String, body: String, danger: Boolean = false, click: () -> Unit) = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; minimumHeight = dp(80); background = cardBackground(20); setPadding(dp(18), dp(16), dp(18), dp(16)); applyUiDirection(this); setOnClickListener { click() }; addView(label(title, 15, if (danger) color(R.color.mt_danger) else color(R.color.mt_text), true)); addView(label(body, 12, color(R.color.mt_muted), false).apply { maxLines = 2; setPadding(0, dp(5), 0, 0) }); layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(12) } }
     private fun divider() = View(this).apply { setBackgroundColor(color(R.color.mt_border)); layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1)).apply { marginStart = dp(15); marginEnd = dp(15) } }

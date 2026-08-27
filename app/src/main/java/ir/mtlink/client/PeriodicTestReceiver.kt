@@ -8,16 +8,17 @@ import java.util.concurrent.Executors
 class PeriodicTestReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val store = MTLinkStore(context)
-        if (!store.appPreferences().periodicTestEnabled) return
+        val preferences = store.appPreferences()
+        if (!preferences.periodicTestEnabled) return
         val pending = goAsync()
         val executor = Executors.newSingleThreadExecutor()
         executor.execute {
             try {
                 val stored = store.proxies()
                 val candidates = stored.sortedWith(compareByDescending<ProxyRecord> { it.favorite }.thenBy { it.testedAt }).take(24)
-                val workers = Executors.newFixedThreadPool(4)
+                val workers = Executors.newFixedThreadPool(preferences.testConcurrency)
                 try {
-                    val updated = candidates.map { proxy -> workers.submit<ProxyRecord> { ProxyTestRunner.test(proxy) } }.map { it.get() }
+                    val updated = candidates.map { proxy -> workers.submit<ProxyRecord> { ProxyTestRunner.test(proxy, preferences.testTimeoutSeconds) } }.map { it.get() }
                     val byId = updated.associateBy { it.id }
                     store.saveProxies(stored.map { byId[it.id] ?: it })
                 } finally {
