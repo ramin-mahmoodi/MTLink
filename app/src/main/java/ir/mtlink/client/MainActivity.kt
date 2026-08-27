@@ -133,7 +133,12 @@ class MainActivity : ComponentActivity() {
         showTab(Tab.HOME)
     }
 
-    override fun onDestroy() { io.shutdownNow(); super.onDestroy() }
+    override fun onDestroy() {
+        navSelectionAnimator?.cancel()
+        progressWidgets.clear()
+        io.shutdownNow()
+        super.onDestroy()
+    }
 
     private fun buildRoot(): View {
         val rootDirection = if (ui.isRtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
