@@ -54,7 +54,6 @@ class MainActivity : ComponentActivity() {
     private lateinit var ui: UiText
     private var proxyListAdapter: ProxyAdapter? = null
     private var sourceListAdapter: SourceAdapter? = null
-    private var sourceEmptyState: View? = null
     private var sourceActiveCountText: TextView? = null
     private var sourceIssueCountText: TextView? = null
     private val sourceFilterChips = mutableMapOf<SourceFilter, TextView>()
@@ -165,7 +164,7 @@ class MainActivity : ComponentActivity() {
                         // Do not cancel and restart it when this callback arrives.
                         val capsuleIsSliding = currentTab == selectedTab && navSelectionAnimator?.isRunning == true
                         currentTab = selectedTab
-                        renderNavigation(animate = !capsuleIsSliding)
+                        if (!capsuleIsSliding) renderNavigation(animate = true)
                     }
                 })
             }
@@ -174,20 +173,20 @@ class MainActivity : ComponentActivity() {
         nav = FrameLayout(this).apply {
             // fixed: Geometry remains physical LTR; Persian mirrors only the order, preventing RTL margin overlap.
             layoutDirection = View.LAYOUT_DIRECTION_LTR
-            background = rounded(color(R.color.mt_surface_raised), color(R.color.mt_border), 28)
+            background = rounded(color(R.color.mt_surface_raised), color(R.color.mt_border), 32)
             elevation = dp(2).toFloat()
             clipToPadding = false
             clipChildren = false
         }
-        // Equal 8dp inset on every side: 56dp outer capsule / 40dp inner capsule.
-        navIndicator = View(this).apply { background = rounded(color(R.color.mt_primary_soft), color(R.color.mt_border), 20) }
-        nav.addView(navIndicator, FrameLayout.LayoutParams(0, dp(40)).apply { leftMargin = dp(8); topMargin = dp(8) })
+        // Equal 8dp inset on every side: 64dp outer capsule / 48dp inner capsule.
+        navIndicator = View(this).apply { background = rounded(color(R.color.mt_primary_soft), color(R.color.mt_border), 24) }
+        nav.addView(navIndicator, FrameLayout.LayoutParams(0, dp(48)).apply { leftMargin = dp(8); topMargin = dp(8) })
         nav.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
             if (navButtons.isNotEmpty()) animateNavigationSelection(animate = false)
         }
         loadingOverlay = LoadingOverlay(this)
         frame.addView(base, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        frame.addView(nav, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(56), Gravity.BOTTOM).apply {
+        frame.addView(nav, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(64), Gravity.BOTTOM).apply {
             marginStart = dp(24)
             marginEnd = dp(24)
         })
@@ -226,7 +225,7 @@ class MainActivity : ComponentActivity() {
             navLayoutItems().forEach { tab ->
                 val button = createNavButton(tab)
                 navButtons[tab] = button
-                nav.addView(button.root, FrameLayout.LayoutParams(dp(48), dp(48)).apply { topMargin = dp(4) })
+                nav.addView(button.root, FrameLayout.LayoutParams(dp(48), dp(48)).apply { topMargin = dp(8) })
             }
         }
         navButtons.forEach { (tab, button) ->
@@ -480,9 +479,6 @@ class MainActivity : ComponentActivity() {
         container.addView(homeTestProgress(Tab.SOURCES), LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12) })
         container.addView(sourceTools(), LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12) })
         container.addView(sourceFilters(), LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(54)).apply { topMargin = dp(8) })
-        val empty = emptyCard(t("فهرست خالی است", "Nothing to show"), t("منبعی با این فیلتر وجود ندارد.", "There are no sources matching this filter."))
-        sourceEmptyState = empty
-        container.addView(empty, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
         val list = RecyclerView(this).apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
             clipToPadding = false
@@ -694,7 +690,6 @@ class MainActivity : ComponentActivity() {
         val all = store.sources()
         val visible = filteredSources()
         sourceListAdapter?.submit(visible)
-        sourceEmptyState?.visibility = if (visible.isEmpty()) View.VISIBLE else View.GONE
         sourceActiveCountText?.text = all.count { it.enabled }.toString()
         sourceIssueCountText?.text = all.count { it.lastError != null }.toString()
         sourceFilterChips.forEach { (filter, chip) ->
