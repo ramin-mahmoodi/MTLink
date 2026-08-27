@@ -89,7 +89,7 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, true)
         window.statusBarColor = color(R.color.mt_background)
         window.navigationBarColor = color(R.color.mt_background)
-        val isLightTheme = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK != Configuration.UI_MODE_NIGHT_YES
+        val isLightTheme = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) != Configuration.UI_MODE_NIGHT_YES
         WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = isLightTheme
         WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightNavigationBars = isLightTheme
         store = MTLinkStore(this)
@@ -131,13 +131,11 @@ class MainActivity : ComponentActivity() {
             orientation = LinearLayout.HORIZONTAL
             layoutDirection = rootDirection
             gravity = Gravity.CENTER
-            background = rounded(color(R.color.mt_surface_raised), color(R.color.mt_border), 28)
-            setPadding(dp(6), dp(5), dp(6), dp(5))
-            elevation = dp(12).toFloat()
+            setPadding(dp(2), dp(4), dp(2), dp(4))
         }
         loadingOverlay = LoadingOverlay(this)
         frame.addView(base, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        frame.addView(nav, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(64), Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL))
+        frame.addView(nav, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(56), Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL))
         frame.addView(loadingOverlay, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         ViewCompat.setOnApplyWindowInsetsListener(frame) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -205,6 +203,7 @@ class MainActivity : ComponentActivity() {
             gravity = Gravity.CENTER_VERTICAL
             minimumWidth = dp(48)
             setPadding(dp(12), 0, dp(12), 0)
+            gravity = Gravity.CENTER
             applyUiDirection(this)
             alpha = if (selected) 0f else 1f
             background = rounded(
@@ -231,7 +230,8 @@ class MainActivity : ComponentActivity() {
                     alpha = 0f
                     maxLines = 1
                     ellipsize = android.text.TextUtils.TruncateAt.END
-                    gravity = Gravity.CENTER_VERTICAL
+                    gravity = Gravity.CENTER
+                    textAlignment = View.TEXT_ALIGNMENT_CENTER
                 }
                 addView(label, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(6) })
                 post {
@@ -262,7 +262,7 @@ class MainActivity : ComponentActivity() {
         addView(LinearLayout(this@MainActivity).apply {
             orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(22), 0, 0); applyUiDirection(this)
             addView(statCard(R.drawable.ic_stat_globe, t("همهٔ پراکسی‌ها", "All proxies"), proxies.size, "#1A2D4F", "#14223E"), LinearLayout.LayoutParams(0, dp(118), 1f).apply { marginEnd = dp(6) })
-            addView(statCard(R.drawable.ic_stat_check, t("در دسترس", "Reachable"), reachable, "#123A34", "#10251F"), LinearLayout.LayoutParams(0, dp(118), 1f).apply { marginStart = dp(6) })
+            addView(statCard(R.drawable.ic_stat_check, t("پراکسی‌های فعال", "Active proxies"), reachable, "#123A34", "#10251F"), LinearLayout.LayoutParams(0, dp(118), 1f).apply { marginStart = dp(6) })
         })
         addView(section(t("اقدام‌های سریع", "Quick actions")))
         addView(quickActionsBar())
@@ -926,8 +926,10 @@ class MainActivity : ComponentActivity() {
     }
     private fun statCard(icon: Int, label: String, number: Int, start: String, end: String, onNumberReady: ((TextView) -> Unit)? = null): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL; gravity = if (ui.isRtl) Gravity.RIGHT or Gravity.CENTER_VERTICAL else Gravity.LEFT or Gravity.CENTER_VERTICAL
-        background = gradient(start, end, 20); elevation = dp(1).toFloat(); setPadding(dp(16), dp(12), dp(16), dp(12)); applyUiDirection(this)
-        addView(ImageView(context).apply { setImageResource(icon); scaleType = ImageView.ScaleType.CENTER_INSIDE }, LinearLayout.LayoutParams(dp(24), dp(24)))
+        background = if (isDarkTheme()) gradient(start, end, 20) else cardBackground(20)
+        elevation = if (isDarkTheme()) dp(1).toFloat() else 0f
+        setPadding(dp(16), dp(12), dp(16), dp(12)); applyUiDirection(this)
+        addView(ImageView(context).apply { setImageResource(icon); setColorFilter(color(R.color.mt_primary)); scaleType = ImageView.ScaleType.CENTER_INSIDE }, LinearLayout.LayoutParams(dp(24), dp(24)))
         addView(this@MainActivity.label(label, 12, color(R.color.mt_primary_light), true).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
         val numberView = this@MainActivity.label(number.toString(), 34, color(R.color.mt_text), true).apply { textDirection = View.TEXT_DIRECTION_LTR }
         onNumberReady?.invoke(numberView)
@@ -1108,6 +1110,7 @@ class MainActivity : ComponentActivity() {
         }
     }
     private fun color(id: Int) = getColor(id)
+    private fun isDarkTheme() = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
     private fun toast(message: String) = Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     private fun updateLoading(status: String) = postUi { loadingOverlay.updateStatus(status) }
