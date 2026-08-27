@@ -1,6 +1,5 @@
 package ir.mtlink.client
 
-import android.animation.ValueAnimator
 import android.app.AlertDialog
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -156,10 +155,7 @@ class MainActivity : ComponentActivity() {
         }
         loadingOverlay = LoadingOverlay(this)
         frame.addView(base, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        frame.addView(nav, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(56), Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
-            marginStart = dp(16)
-            marginEnd = dp(16)
-        })
+        frame.addView(nav, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(56), Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL))
         frame.addView(loadingOverlay, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         ViewCompat.setOnApplyWindowInsetsListener(frame) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -188,7 +184,7 @@ class MainActivity : ComponentActivity() {
         applyUiDirection(window.decorView, content, nav)
         nav.removeAllViews()
         navItems().forEach { item ->
-            nav.addView(navItem(item), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, if (item == currentTab) 1.55f else 1f).apply { marginStart = dp(2); marginEnd = dp(2) })
+            nav.addView(navItem(item), LinearLayout.LayoutParams(if (item == currentTab) dp(126) else dp(52), ViewGroup.LayoutParams.MATCH_PARENT).apply { marginStart = dp(2); marginEnd = dp(2) })
         }
         if (animate) {
             nav.animate().cancel()
@@ -255,10 +251,8 @@ class MainActivity : ComponentActivity() {
             Tab.SOURCES -> R.drawable.ic_nav_sources
             Tab.SETTINGS -> R.drawable.ic_nav_settings
         }
-        return LinearLayout(this).apply {
-            gravity = Gravity.CENTER
-            minimumWidth = 0
-            setPadding(dp(7), 0, dp(7), 0)
+        return FrameLayout(this).apply {
+            foregroundGravity = Gravity.CENTER
             applyUiDirection(this)
             alpha = if (selected) 0f else 1f
             background = rounded(
@@ -274,39 +268,28 @@ class MainActivity : ComponentActivity() {
                 }
                 false
             }
+            val content = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
+                layoutDirection = if (ui.isRtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
+            }
             val icon = ImageView(context).apply {
                 setImageResource(iconRes)
                 setColorFilter(if (selected) color(R.color.mt_primary_light) else color(R.color.mt_muted))
                 contentDescription = title
             }
-            addView(icon, LinearLayout.LayoutParams(dp(22), dp(22)))
+            content.addView(icon, LinearLayout.LayoutParams(dp(22), dp(22)))
             if (selected) {
                 val label = label(title, 12, color(R.color.mt_primary_light), true).apply {
-                    alpha = 0f
                     maxLines = 1
                     ellipsize = android.text.TextUtils.TruncateAt.END
                     gravity = Gravity.CENTER
                     textAlignment = View.TEXT_ALIGNMENT_CENTER
                 }
-                addView(label, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(5) })
-                post {
-                    animate().alpha(1f).setDuration(110).setInterpolator(tabInterpolator).start()
-                    ValueAnimator.ofInt(0, dp(58)).apply {
-                        duration = 180
-                        interpolator = tabInterpolator
-                        addUpdateListener { animator ->
-                            (label.layoutParams as LinearLayout.LayoutParams).apply {
-                                width = animator.animatedValue as Int
-                                label.layoutParams = this
-                            }
-                            label.alpha = animator.animatedFraction
-                        }
-                        start()
-                    }
-                }
-            } else {
-                post { animate().alpha(1f).setDuration(110).setInterpolator(tabInterpolator).start() }
+                content.addView(label, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(7) })
             }
+            addView(content, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER))
+            post { animate().alpha(1f).setDuration(110).setInterpolator(tabInterpolator).start() }
         }
     }
 
