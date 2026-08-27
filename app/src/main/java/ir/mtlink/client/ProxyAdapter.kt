@@ -265,12 +265,7 @@ class ProxyAdapter(
         val actions: List<SwipeAction> = if (direction > 0) {
             listOf(SwipeAction.QR, SwipeAction.FAVORITE)
         } else {
-            buildList {
-                if (proxy.protocol == ProxyProtocol.MTPROTO) add(SwipeAction.OPEN_TELEGRAM)
-                add(SwipeAction.SHARE)
-                add(SwipeAction.COPY)
-                add(SwipeAction.DELETE)
-            }
+            listOf(SwipeAction.OPEN_TELEGRAM, SwipeAction.SHARE, SwipeAction.COPY, SwipeAction.DELETE)
         }
         val actionsWidth = if (direction > 0) compactReveal.toInt() else expandedReveal.toInt()
         container.layoutParams = FrameLayout.LayoutParams(actionsWidth, ViewGroup.LayoutParams.MATCH_PARENT, if (direction > 0) Gravity.LEFT else Gravity.RIGHT)

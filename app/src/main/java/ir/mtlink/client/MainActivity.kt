@@ -829,6 +829,7 @@ class MainActivity : ComponentActivity() {
                     updateFetchProgress(1, source.title)
                     finishFetchProgress()
                     toast(if (added > 0) t("$added پراکسی جدید دریافت شد", "$added new proxies fetched") else t("پراکسی تازه‌ای پیدا نشد", "No new proxies found"))
+                    refreshProxyResultsAfterFetch()
                     refreshSourcesInPlace()
                 }
             } catch (error: Exception) {
@@ -897,9 +898,10 @@ class MainActivity : ComponentActivity() {
                     finishFetchProgress()
                     toast(if (added > 0) t("$added پراکسی جدید دریافت شد", "$added new proxies fetched") else t("پراکسی تازه‌ای پیدا نشد", "No new proxies found"))
                     if (errors > 0) toast(t("$errors منبع در دسترس نبود", "$errors sources were unavailable"))
+                    refreshProxyResultsAfterFetch()
                     if (prefs.autoTestAfterFetch && persisted.isNotEmpty()) testAll()
                     else if (currentTab == Tab.SOURCES) refreshSourcesInPlace()
-                    else showTab(currentTab, forceRefresh = true)
+                    else if (currentTab != Tab.PROXIES) showTab(currentTab, forceRefresh = true)
                 }
             } catch (error: Throwable) {
                 postUi {
@@ -943,7 +945,7 @@ class MainActivity : ComponentActivity() {
 
     private fun showProxyActions(proxy: ProxyRecord) {
         val actions = mutableListOf(t("تست دوباره", "Test again"), t("کپی لینک", "Copy link"), t("اشتراک‌گذاری", "Share"), t("QR کد", "QR code"), if (proxy.favorite) t("حذف علاقه‌مندی", "Remove favorite") else t("افزودن به علاقه‌مندی", "Add favorite"), t("حذف پراکسی", "Delete proxy"))
-        if (proxy.protocol == ProxyProtocol.MTPROTO) actions.add(0, t("بازکردن در Telegram", "Open in Telegram"))
+        actions.add(0, t("بازکردن در Telegram", "Open in Telegram"))
         AlertDialog.Builder(this)
             .setTitle(proxy.displayAddress())
             .setMessage("${if (proxy.protocol == ProxyProtocol.MTPROTO) "MTProto" else "SOCKS5"} · ${proxy.status.name.lowercase()}")
@@ -969,6 +971,13 @@ class MainActivity : ComponentActivity() {
             SwipeAction.QR -> showQr(proxy)
             SwipeAction.FAVORITE -> toggleFavorite(proxy, adapter)
         }
+    }
+
+    private fun refreshProxyResultsAfterFetch() {
+        // Freshly fetched entries are always visible without requiring a manual tap on All.
+        proxyFilter = null
+        favoritesOnly = false
+        refreshTab(Tab.PROXIES)
     }
 
     private fun toggleFavorite(proxy: ProxyRecord, adapter: ProxyAdapter? = proxyListAdapter) {
