@@ -70,7 +70,7 @@ class MainActivity : ComponentActivity() {
     private val tabViews = mutableMapOf<Tab, View>()
     private val pageContainers = mutableMapOf<Tab, FrameLayout>()
     private lateinit var tabPagerAdapter: TabPagerAdapter
-    private val tabInterpolator = DecelerateInterpolator(1.7f)
+    private val tabInterpolator = DecelerateInterpolator(2.15f)
 
     private enum class Tab { HOME, PROXIES, SOURCES, SETTINGS }
     private enum class SourceFilter { ALL, ENABLED, ERRORS }
@@ -133,7 +133,7 @@ class MainActivity : ComponentActivity() {
                 tabPagerAdapter = TabPagerAdapter()
                 adapter = tabPagerAdapter
                 setPageTransformer { page, position ->
-                    page.alpha = 1f - (0.14f * abs(position)).coerceIn(0f, 0.14f)
+                    page.alpha = 1f - (0.08f * abs(position)).coerceIn(0f, 0.08f)
                 }
                 registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
                     override fun onPageSelected(position: Int) {
@@ -148,7 +148,7 @@ class MainActivity : ComponentActivity() {
             orientation = LinearLayout.HORIZONTAL
             layoutDirection = rootDirection
             gravity = Gravity.CENTER
-            background = rounded(color(R.color.mt_surface_raised), color(R.color.mt_border), 28)
+            background = rounded(color(R.color.mt_surface_raised), color(R.color.mt_border), 26)
             elevation = dp(2).toFloat()
             setPadding(dp(8), dp(4), dp(8), dp(4))
         }
@@ -188,10 +188,10 @@ class MainActivity : ComponentActivity() {
         }
         if (animate) {
             nav.animate().cancel()
-            nav.alpha = 0.9f
-            nav.scaleX = 0.99f
-            nav.scaleY = 0.99f
-            nav.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(130).setInterpolator(tabInterpolator).start()
+            nav.alpha = 0.96f
+            nav.scaleX = 0.995f
+            nav.scaleY = 0.995f
+            nav.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(105).setInterpolator(tabInterpolator).start()
         }
     }
 
@@ -254,17 +254,17 @@ class MainActivity : ComponentActivity() {
         return FrameLayout(this).apply {
             foregroundGravity = Gravity.CENTER
             applyUiDirection(this)
-            alpha = if (selected) 0f else 1f
+            alpha = 1f
             background = rounded(
                 if (selected) color(R.color.mt_primary_soft) else Color.TRANSPARENT,
                 if (selected) color(R.color.mt_border) else Color.TRANSPARENT,
-                23,
+                26,
             )
             setOnClickListener { showTab(tab) }
             setOnTouchListener { view, event ->
                 when (event.actionMasked) {
-                    android.view.MotionEvent.ACTION_DOWN -> view.animate().scaleX(0.94f).scaleY(0.94f).setDuration(75).start()
-                    android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> view.animate().scaleX(1f).scaleY(1f).setDuration(140).setInterpolator(tabInterpolator).start()
+                    android.view.MotionEvent.ACTION_DOWN -> view.animate().scaleX(0.97f).scaleY(0.97f).setDuration(55).start()
+                    android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> view.animate().scaleX(1f).scaleY(1f).setDuration(115).setInterpolator(tabInterpolator).start()
                 }
                 false
             }
@@ -289,7 +289,6 @@ class MainActivity : ComponentActivity() {
                 content.addView(label, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(7) })
             }
             addView(content, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER))
-            post { animate().alpha(1f).setDuration(110).setInterpolator(tabInterpolator).start() }
         }
     }
 
