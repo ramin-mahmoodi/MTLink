@@ -464,7 +464,8 @@ class MainActivity : ComponentActivity() {
         val list = RecyclerView(this).apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
             clipToPadding = false
-            setPadding(0, dp(8), 0, dp(12))
+            // The Sources list scrolls inside this page, so reserve room for the floating navigation capsule.
+            setPadding(0, dp(8), 0, dp(132))
             applyUiDirection(this)
         }
         val adapter = SourceAdapter(
