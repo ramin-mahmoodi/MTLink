@@ -143,7 +143,10 @@ class MainActivity : ComponentActivity() {
         }
         loadingOverlay = LoadingOverlay(this)
         frame.addView(base, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        frame.addView(nav, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(56), Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL))
+        frame.addView(nav, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(56), Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
+            marginStart = dp(16)
+            marginEnd = dp(16)
+        })
         frame.addView(loadingOverlay, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         ViewCompat.setOnApplyWindowInsetsListener(frame) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -166,7 +169,7 @@ class MainActivity : ComponentActivity() {
         val hadContent = activeTabView != null
         nav.removeAllViews()
         navItems().forEach { item ->
-            nav.addView(navItem(item), LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT).apply { marginStart = dp(1); marginEnd = dp(1) })
+            nav.addView(navItem(item), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, if (item == currentTab) 1.55f else 1f).apply { marginStart = dp(2); marginEnd = dp(2) })
         }
         nav.animate().cancel()
         nav.alpha = if (hadContent) 0.86f else 1f
@@ -244,8 +247,9 @@ class MainActivity : ComponentActivity() {
         private fun startsOnHorizontalGestureView(rawX: Float, rawY: Float): Boolean {
             val rect = android.graphics.Rect()
             fun findScrollableChild(view: View): Boolean {
-                val isScrollableHorizontally = view is RecyclerView || view is HorizontalScrollView
-                if (isScrollableHorizontally && view.getGlobalVisibleRect(rect) && rect.contains(rawX.toInt(), rawY.toInt())) return true
+                val isProxyCardList = view is RecyclerView && view.adapter is ProxyAdapter
+                val isHorizontalControl = view is HorizontalScrollView
+                if ((isProxyCardList || isHorizontalControl) && view.getGlobalVisibleRect(rect) && rect.contains(rawX.toInt(), rawY.toInt())) return true
                 return (view as? ViewGroup)?.let { group -> (0 until group.childCount).any { findScrollableChild(group.getChildAt(it)) } } ?: false
             }
             return findScrollableChild(content)
@@ -269,8 +273,8 @@ class MainActivity : ComponentActivity() {
         }
         return LinearLayout(this).apply {
             gravity = Gravity.CENTER
-            minimumWidth = dp(48)
-            setPadding(dp(12), 0, dp(12), 0)
+            minimumWidth = 0
+            setPadding(dp(7), 0, dp(7), 0)
             applyUiDirection(this)
             alpha = if (selected) 0f else 1f
             background = rounded(
@@ -300,10 +304,10 @@ class MainActivity : ComponentActivity() {
                     gravity = Gravity.CENTER
                     textAlignment = View.TEXT_ALIGNMENT_CENTER
                 }
-                addView(label, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(6) })
+                addView(label, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(5) })
                 post {
                     animate().alpha(1f).setDuration(110).setInterpolator(tabInterpolator).start()
-                    ValueAnimator.ofInt(0, dp(74)).apply {
+                    ValueAnimator.ofInt(0, dp(58)).apply {
                         duration = 180
                         interpolator = tabInterpolator
                         addUpdateListener { animator ->
