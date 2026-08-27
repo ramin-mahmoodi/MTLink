@@ -39,5 +39,12 @@ class MTProtoHealthCheckTest {
         assertFalse(MTProtoHealthCheck.validateResPqForTest(frame, ByteArray(16)))
     }
 
+    @Test
+    fun `reverses the exact MTProxy key and IV ranges`() {
+        val init = ByteArray(64) { it.toByte() }
+        assertTrue(MTProtoHealthCheck.reversedRangeForTest(init, 55, 24).contentEquals((55 downTo 24).map(Int::toByte).toByteArray()))
+        assertTrue(MTProtoHealthCheck.reversedRangeForTest(init, 23, 8).contentEquals((23 downTo 8).map(Int::toByte).toByteArray()))
+    }
+
     private fun littleEndian(size: Int): ByteBuffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN)
 }

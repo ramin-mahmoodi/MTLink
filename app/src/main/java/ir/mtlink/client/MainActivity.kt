@@ -10,7 +10,6 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
@@ -258,6 +257,7 @@ class MainActivity : ComponentActivity() {
         return bounds
     }
 
+    @android.annotation.SuppressLint("ClickableViewAccessibility")
     private fun createNavButton(tab: Tab): NavButton {
         val root = FrameLayout(this).apply {
             setOnClickListener { haptic(this); showTab(tab) }
@@ -398,7 +398,7 @@ class MainActivity : ComponentActivity() {
         container.addView(header(t("همهٔ پراکسی‌ها", "All proxies"), "${store.proxies().size} ${t("نتیجهٔ ذخیره‌شده", "saved")}"))
         val filters = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = if (ui.isRtl) Gravity.RIGHT else Gravity.LEFT
+            gravity = Gravity.START
             setPadding(0, dp(15), dp(8), dp(5))
             applyUiDirection(this)
         }
@@ -652,7 +652,7 @@ class MainActivity : ComponentActivity() {
         isFillViewport = true
         applyUiDirection(this)
         val row = LinearLayout(context).apply {
-            gravity = if (ui.isRtl) Gravity.RIGHT else Gravity.LEFT
+            gravity = Gravity.START
             applyUiDirection(this)
         }
         val filters = listOf(
@@ -692,8 +692,8 @@ class MainActivity : ComponentActivity() {
         val all = store.sources()
         val visible = filteredSources()
         sourceListAdapter?.submit(visible)
-        sourceActiveCountText?.text = all.count { it.enabled }.toString()
-        sourceIssueCountText?.text = all.count { it.lastError != null }.toString()
+        sourceActiveCountText?.text = String.format(java.util.Locale.getDefault(), "%d", all.count { it.enabled })
+        sourceIssueCountText?.text = String.format(java.util.Locale.getDefault(), "%d", all.count { it.lastError != null })
         sourceFilterChips.forEach { (filter, chip) ->
             val selected = filter == sourceFilter
             chip.setTextColor(if (selected) color(R.color.mt_background) else color(R.color.mt_primary))
@@ -763,11 +763,11 @@ class MainActivity : ComponentActivity() {
             hint = t("نام منبع", "Source name"); setText(existing?.title.orEmpty()); textSize = 15f
             layoutDirection = if (ui.isRtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
             textDirection = if (ui.isRtl) View.TEXT_DIRECTION_FIRST_STRONG_RTL else View.TEXT_DIRECTION_FIRST_STRONG_LTR
-            gravity = if (ui.isRtl) Gravity.RIGHT else Gravity.LEFT
+            gravity = Gravity.START
         }
         val url = EditText(this).apply {
             hint = "https://…"; setText(existing?.url.orEmpty()); inputType = android.text.InputType.TYPE_TEXT_VARIATION_URI; textSize = 13f
-            layoutDirection = View.LAYOUT_DIRECTION_LTR; textDirection = View.TEXT_DIRECTION_LTR; gravity = Gravity.LEFT
+            layoutDirection = View.LAYOUT_DIRECTION_LTR; textDirection = View.TEXT_DIRECTION_LTR; gravity = Gravity.START
         }
         val typeLabels = arrayOf(t("خودکار", "Auto"), "Text", "JSON", "HTML")
         var selected = existing?.type?.ordinal ?: 0
@@ -1091,12 +1091,12 @@ class MainActivity : ComponentActivity() {
     }
     private fun header(title: String, subtitle: String): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
-        gravity = if (ui.isRtl) Gravity.RIGHT else Gravity.LEFT
+        gravity = Gravity.START
         addView(label(title, 26, color(R.color.mt_text), true))
         addView(label(subtitle, 13, color(R.color.mt_muted), false).apply { maxLines = 2; setPadding(0, dp(4), 0, 0) })
     }
     private fun statCard(icon: Int, label: String, number: Int, start: String, end: String, onNumberReady: ((TextView) -> Unit)? = null): View = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL; gravity = if (ui.isRtl) Gravity.RIGHT or Gravity.CENTER_VERTICAL else Gravity.LEFT or Gravity.CENTER_VERTICAL
+        orientation = LinearLayout.VERTICAL; gravity = Gravity.START or Gravity.CENTER_VERTICAL
         background = gradient(start, end, 20)
         elevation = 0f
         setPadding(dp(16), dp(12), dp(16), dp(12)); applyUiDirection(this)
@@ -1155,11 +1155,11 @@ class MainActivity : ComponentActivity() {
         visibility = if (testProgressActive || fetchProgressActive) View.VISIBLE else View.GONE
         applyUiDirection(this)
         val headline = label(progressHeadline(), 13, color(R.color.mt_text), true).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END }
-        val progress = label(progressCopy(), 12, color(R.color.mt_muted), false).apply { gravity = if (ui.isRtl) Gravity.LEFT else Gravity.RIGHT; textDirection = View.TEXT_DIRECTION_LTR }
+        val progress = label(progressCopy(), 12, color(R.color.mt_muted), false).apply { gravity = Gravity.END; textDirection = View.TEXT_DIRECTION_LTR }
         val top = LinearLayout(context).apply { gravity = Gravity.CENTER_VERTICAL; applyUiDirection(this); addView(headline, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)); addView(progress, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)) }
         val track = FrameLayout(context).apply { background = rounded(color(R.color.mt_surface_soft), Color.TRANSPARENT, 5) }
         val fill = View(context).apply { background = rounded(color(R.color.mt_primary), Color.TRANSPARENT, 5) }
-        track.addView(fill, FrameLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, if (ui.isRtl) Gravity.RIGHT else Gravity.LEFT))
+        track.addView(fill, FrameLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.START))
         // fixed: A ViewPager page can be attached before it has a width; update once it receives layout instead of reposting indefinitely.
         track.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> renderTestProgress() }
         addView(top)
@@ -1212,9 +1212,9 @@ class MainActivity : ComponentActivity() {
         val fraction = completed.toFloat() / total.toFloat()
         progressWidgets.values.toList().forEach { widget ->
             widget.headline.text = progressHeadline()
-            widget.copy.text = "$completed/$total · ${(fraction * 100).toInt()}%"
+            widget.copy.text = String.format(java.util.Locale.getDefault(), "%d/%d · %d%%", completed, total, (fraction * 100).toInt())
             if (widget.track.width > 0) {
-                widget.fill.layoutParams = FrameLayout.LayoutParams((widget.track.width * fraction).toInt(), ViewGroup.LayoutParams.MATCH_PARENT, if (ui.isRtl) Gravity.RIGHT else Gravity.LEFT)
+                widget.fill.layoutParams = FrameLayout.LayoutParams((widget.track.width * fraction).toInt(), ViewGroup.LayoutParams.MATCH_PARENT, Gravity.START)
             }
         }
     }
@@ -1229,7 +1229,7 @@ class MainActivity : ComponentActivity() {
     }
     private fun primary(text: String, click: () -> Unit): TextView = label(text, 15, Color.WHITE, true).apply { gravity = Gravity.CENTER; setPadding(dp(18), 0, dp(18), 0); background = if (isDarkTheme()) gradient("#7EA8FF", "#4A72D6", 16) else gradient("#4F79F5", "#315BD5", 16); setOnClickListener { haptic(this); click() } }
     private fun proxyRow(proxy: ProxyRecord, click: () -> Unit): View = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; minimumHeight = dp(76); background = cardBackground(18); setPadding(dp(16), dp(13), dp(16), dp(13)); setOnClickListener { click() }; addView(label(proxy.displayAddress(), 15, color(R.color.mt_text), true).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END }); addView(label("${if (proxy.protocol == ProxyProtocol.MTPROTO) "MTProto" else "SOCKS5"} · ${proxy.latencyMs?.let { "$it ms" } ?: t("تست‌نشده", "Untested")}", 12, color(R.color.mt_muted), false).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END; setPadding(0, dp(4), 0, 0) }); layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) } }
-    private fun emptyCard(title: String, body: String) = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = if (ui.isRtl) Gravity.RIGHT else Gravity.LEFT; background = cardBackground(20); setPadding(dp(20), dp(22), dp(20), dp(22)); applyUiDirection(this); addView(label(title, 17, color(R.color.mt_text), true)); addView(label(body, 13, color(R.color.mt_muted), false).apply { maxLines = 2; setPadding(0, dp(8), 0, 0) }) }
+    private fun emptyCard(title: String, body: String) = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.START; background = cardBackground(20); setPadding(dp(20), dp(22), dp(20), dp(22)); applyUiDirection(this); addView(label(title, 17, color(R.color.mt_text), true)); addView(label(body, 13, color(R.color.mt_muted), false).apply { maxLines = 2; setPadding(0, dp(8), 0, 0) }) }
     private fun setting(title: String, body: String, checked: Boolean, changed: (Boolean) -> Unit) = LinearLayout(this).apply {
         gravity = Gravity.CENTER_VERTICAL; minimumHeight = dp(82); setPadding(dp(18), dp(15), dp(18), dp(15)); applyUiDirection(this)
         val copy = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, dp(12), 0); applyUiDirection(this) }
@@ -1268,7 +1268,7 @@ class MainActivity : ComponentActivity() {
         layoutDirection = if (ui.isRtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
         textDirection = if (ui.isRtl) View.TEXT_DIRECTION_FIRST_STRONG_RTL else View.TEXT_DIRECTION_FIRST_STRONG_LTR
         textAlignment = if (ui.isRtl) View.TEXT_ALIGNMENT_VIEW_START else View.TEXT_ALIGNMENT_VIEW_START
-        gravity = if (ui.isRtl) Gravity.RIGHT else Gravity.LEFT
+        gravity = Gravity.START
         includeFontPadding = true
         setLineSpacing(dp(2).toFloat(), 1f)
     }
@@ -1283,7 +1283,7 @@ class MainActivity : ComponentActivity() {
             if (view is TextView) {
                 view.textDirection = text
                 view.textAlignment = View.TEXT_ALIGNMENT_VIEW_START
-                view.gravity = if (ui.isRtl) Gravity.RIGHT else Gravity.LEFT
+                view.gravity = Gravity.START
             }
         }
     }
@@ -1292,7 +1292,7 @@ class MainActivity : ComponentActivity() {
         progressWidgets.clear()
         pageContainers.values.forEach { it.removeAllViews() }
         pageContainers.clear()
-        tabPagerAdapter.notifyDataSetChanged()
+        tabPagerAdapter.notifyItemRangeChanged(0, tabPagerAdapter.itemCount)
     }
     private fun color(id: Int) = getColor(id)
     private fun haptic(view: View) { if (store.appPreferences().hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY) }
@@ -1302,7 +1302,7 @@ class MainActivity : ComponentActivity() {
     private fun updateLoading(status: String) = postUi { loadingOverlay.updateStatus(status) }
     private fun t(fa: String, en: String) = ui.of(fa, en)
     private fun postUi(action: () -> Unit) {
-        if (!isFinishing && (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR1 || !isDestroyed)) runOnUiThread(action)
+        if (!isFinishing && !isDestroyed) runOnUiThread(action)
     }
     private fun AlertDialog.applyDialogDirection(): AlertDialog {
         window?.decorView?.layoutDirection = if (ui.isRtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR

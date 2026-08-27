@@ -51,7 +51,7 @@ class SourceAdapter(
             ellipsize = android.text.TextUtils.TruncateAt.END
             textDirection = android.view.View.TEXT_DIRECTION_LTR
             textAlignment = android.view.View.TEXT_ALIGNMENT_VIEW_START
-            gravity = Gravity.LEFT
+            gravity = Gravity.START
         }
         val status = text(context, 11, ContextCompat.getColor(context, R.color.mt_primary_light), true).apply {
             maxLines = 1
@@ -76,7 +76,7 @@ class SourceAdapter(
     override fun onBindViewHolder(holder: SourceHolder, position: Int) {
         val source = items[position]
         holder.title.text = source.title
-        holder.detail.text = "${source.type.name}  •  ${android.net.Uri.parse(source.url).host.orEmpty()}"
+        holder.detail.text = String.format(java.util.Locale.getDefault(), "%s  •  %s", source.type.name, android.net.Uri.parse(source.url).host.orEmpty())
         when {
             source.lastError != null -> {
                 holder.status.text = if (ui.isRtl) "خطا: ${source.lastError}" else "Error: ${source.lastError}"
@@ -108,7 +108,7 @@ class SourceAdapter(
         includeFontPadding = true; setLineSpacing(dp(1).toFloat(), 1f)
         textDirection = if (ui.isRtl) android.view.View.TEXT_DIRECTION_FIRST_STRONG_RTL else android.view.View.TEXT_DIRECTION_FIRST_STRONG_LTR
         textAlignment = android.view.View.TEXT_ALIGNMENT_VIEW_START
-        gravity = if (ui.isRtl) Gravity.RIGHT else Gravity.LEFT
+        gravity = Gravity.START
         setPadding(0, 0, dp(8), dp(3))
     }
     private fun dp(value: Int) = (value * android.content.res.Resources.getSystem().displayMetrics.density).toInt()

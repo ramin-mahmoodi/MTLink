@@ -77,6 +77,12 @@ android {
         buildConfig = true
     }
 
+    // Newer Core/Activity releases require AGP 8.9+ and compileSdk 36+;
+    // keep the tested Android 8–16 toolchain and hide update-only notices.
+    lint {
+        disable += "GradleDependency"
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

@@ -83,7 +83,7 @@ class ProxyAdapter(
         }
         val dot = TextView(context).apply {
             gravity = Gravity.CENTER
-            text = "MT"
+            text = MTPROTO_ABBREVIATION
             textSize = 14f
             setTextColor(ContextCompat.getColor(context, R.color.mt_primary_light))
             typeface = MTFonts.face(context, true)
@@ -98,19 +98,19 @@ class ProxyAdapter(
         }
         val meta = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = (if (ui.isRtl) Gravity.RIGHT else Gravity.LEFT) or Gravity.CENTER_VERTICAL
+            gravity = Gravity.START or Gravity.CENTER_VERTICAL
             layoutDirection = if (ui.isRtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
             setPadding(dp(11), 0, dp(9), 0)
         }
         val address = label(context, 15, ContextCompat.getColor(context, R.color.mt_text), true).apply {
             maxLines = 1; ellipsize = TextUtils.TruncateAt.END
-            textDirection = View.TEXT_DIRECTION_LTR; textAlignment = View.TEXT_ALIGNMENT_VIEW_START; gravity = Gravity.LEFT
+            textDirection = View.TEXT_DIRECTION_LTR; textAlignment = View.TEXT_ALIGNMENT_VIEW_START; gravity = Gravity.START
         }
         val detail = label(context, 12, ContextCompat.getColor(context, R.color.mt_muted), false).apply {
             maxLines = 1; ellipsize = TextUtils.TruncateAt.END; setPadding(0, dp(4), 0, 0)
             textDirection = if (ui.isRtl) View.TEXT_DIRECTION_FIRST_STRONG_RTL else View.TEXT_DIRECTION_FIRST_STRONG_LTR
             textAlignment = View.TEXT_ALIGNMENT_VIEW_START
-            gravity = if (ui.isRtl) Gravity.RIGHT else Gravity.LEFT
+            gravity = Gravity.START
         }
         val status = label(context, 11, Color.WHITE, true).apply {
             gravity = Gravity.CENTER
@@ -141,7 +141,7 @@ class ProxyAdapter(
         holder.dot.text = flag(proxy.countryCode)
         holder.favorite.visibility = if (proxy.favorite) View.VISIBLE else View.GONE
         holder.address.text = proxy.displayAddress()
-        holder.detail.text = "${if (proxy.protocol == ProxyProtocol.MTPROTO) "MTProto" else "SOCKS5"}  ·  ${statusCopy(proxy)}"
+        holder.detail.text = String.format(java.util.Locale.getDefault(), "%s  ·  %s", if (proxy.protocol == ProxyProtocol.MTPROTO) "MTProto" else "SOCKS5", statusCopy(proxy))
         val context = holder.itemView.context
         val (label, color) = when (proxy.status) {
             ProxyStatus.REACHABLE -> when (proxy.verification) {
@@ -167,6 +167,7 @@ class ProxyAdapter(
         else -> ui.of("دریافت‌شده", "Fetched")
     }
 
+    @android.annotation.SuppressLint("ClickableViewAccessibility")
     private fun bindTouch(holder: ProxyHolder, proxy: ProxyRecord) {
         val slop = ViewConfiguration.get(holder.card.context).scaledTouchSlop
         var downX = 0f
@@ -174,6 +175,7 @@ class ProxyAdapter(
         var dragging = false
         var startingTranslation = 0f
         var closingExistingRail = false
+        holder.card.setOnClickListener { onClick(proxy) }
         holder.card.setOnTouchListener { _, event ->
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
@@ -236,10 +238,10 @@ class ProxyAdapter(
                                 closeCard(holder)
                             }
                         }
-                    } else {
+                    } else if (event.actionMasked == MotionEvent.ACTION_UP) {
                         onHaptic(holder.card)
                         holder.card.animate().scaleX(.985f).scaleY(.985f).setDuration(75).setInterpolator(motion).withEndAction {
-                            holder.card.animate().scaleX(1f).scaleY(1f).setDuration(120).setInterpolator(motion).withEndAction { onClick(proxy) }.start()
+                            holder.card.animate().scaleX(1f).scaleY(1f).setDuration(120).setInterpolator(motion).withEndAction { holder.card.performClick() }.start()
                         }.start()
                     }
                     holder.card.parent?.requestDisallowInterceptTouchEvent(false)
@@ -278,7 +280,7 @@ class ProxyAdapter(
             listOf(SwipeAction.OPEN_TELEGRAM, SwipeAction.SHARE, SwipeAction.COPY, SwipeAction.DELETE)
         }
         val actionsWidth = if (direction > 0) compactReveal.toInt() else expandedReveal.toInt()
-        container.layoutParams = FrameLayout.LayoutParams(actionsWidth, ViewGroup.LayoutParams.MATCH_PARENT, if (direction > 0) Gravity.LEFT else Gravity.RIGHT)
+        container.layoutParams = FrameLayout.LayoutParams(actionsWidth, ViewGroup.LayoutParams.MATCH_PARENT, if (direction > 0) Gravity.START else Gravity.END)
         container.gravity = Gravity.CENTER
         actions.forEach { action ->
             val color = when (action) {
@@ -321,6 +323,7 @@ class ProxyAdapter(
     ) : RecyclerView.ViewHolder(view)
 
     companion object {
+        private const val MTPROTO_ABBREVIATION = "MT"
         fun flag(code: String?): String {
             val value = code?.uppercase()?.takeIf { it.length == 2 } ?: return "🌐"
             return String(Character.toChars(0x1F1E6 + (value[0] - 'A'))) + String(Character.toChars(0x1F1E6 + (value[1] - 'A')))

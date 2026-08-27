@@ -124,7 +124,7 @@ object MTProtoHealthCheck {
         byteBuffer(init, 56).putInt(PROTO_PADDED_INTERMEDIATE)
         byteBuffer(init, 60).putShort(dcId.toShort()).putShort(0)
         val encryptor = ctr(sha256(init.copyOfRange(8, 40) + secret), init.copyOfRange(40, 56), Cipher.ENCRYPT_MODE)
-        val decryptor = ctr(sha256(init.copyOfRange(55, 23).reversedArray() + secret), init.copyOfRange(23, 7).reversedArray(), Cipher.DECRYPT_MODE)
+        val decryptor = ctr(sha256(reversedRange(init, 55, 24) + secret), reversedRange(init, 23, 8), Cipher.DECRYPT_MODE)
         val encrypted = encryptor.update(init)
         encrypted.copyInto(init, destinationOffset = 56, startIndex = 56, endIndex = 64)
         return Session(init, encryptor, decryptor)
@@ -170,6 +170,8 @@ object MTProtoHealthCheck {
 
     private fun ctr(key: ByteArray, iv: ByteArray, mode: Int): Cipher = Cipher.getInstance("AES/CTR/NoPadding").apply { init(mode, SecretKeySpec(key, "AES"), IvParameterSpec(iv)) }
     private fun sha256(value: ByteArray) = MessageDigest.getInstance("SHA-256").digest(value)
+    internal fun reversedRangeForTest(value: ByteArray, first: Int, last: Int): ByteArray = reversedRange(value, first, last)
+    private fun reversedRange(value: ByteArray, first: Int, last: Int): ByteArray = ByteArray(first - last + 1) { offset -> value[first - offset] }
     private fun littleEndian(size: Int): ByteBuffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN)
     private fun byteBuffer(value: ByteArray, offset: Int): ByteBuffer = ByteBuffer.wrap(value).order(ByteOrder.LITTLE_ENDIAN).apply { position(offset) }
     private const val PROTO_PADDED_INTERMEDIATE = 0xDDDDDDDD.toInt()
