@@ -14,9 +14,7 @@ import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
-import android.view.MotionEvent
 import android.view.View
-import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.widget.EditText
@@ -32,6 +30,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.widget.SwitchCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.viewpager2.widget.ViewPager2
 import androidx.core.view.WindowCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -41,7 +40,7 @@ import kotlin.math.abs
 
 class MainActivity : ComponentActivity() {
     private lateinit var store: MTLinkStore
-    private lateinit var content: FrameLayout
+    private lateinit var content: ViewPager2
     private lateinit var nav: LinearLayout
     private lateinit var loadingOverlay: LoadingOverlay
     private val io = Executors.newFixedThreadPool(4)
@@ -70,7 +69,8 @@ class MainActivity : ComponentActivity() {
     private var homeProgressFill: View? = null
     private var homeProgressText: TextView? = null
     private val tabViews = mutableMapOf<Tab, View>()
-    private var activeTabView: View? = null
+    private val pageContainers = mutableMapOf<Tab, FrameLayout>()
+    private lateinit var tabPagerAdapter: TabPagerAdapter
     private val tabInterpolator = DecelerateInterpolator(1.7f)
 
     private enum class Tab { HOME, PROXIES, SOURCES, SETTINGS }
@@ -122,13 +122,26 @@ class MainActivity : ComponentActivity() {
     private fun buildRoot(): View {
         val rootDirection = if (ui.isRtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
         val frame = FrameLayout(this).apply { layoutDirection = rootDirection }
-        val base = TabSwipeFrame(this).apply {
+        val base = FrameLayout(this).apply {
             layoutDirection = rootDirection
             setBackgroundColor(color(R.color.mt_background))
-            content = FrameLayout(context).apply {
+            content = ViewPager2(context).apply {
                 layoutDirection = rootDirection
                 clipToPadding = false
                 layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                orientation = ViewPager2.ORIENTATION_HORIZONTAL
+                offscreenPageLimit = navItems().size - 1
+                tabPagerAdapter = TabPagerAdapter()
+                adapter = tabPagerAdapter
+                setPageTransformer { page, position ->
+                    page.alpha = 1f - (0.14f * abs(position)).coerceIn(0f, 0.14f)
+                }
+                registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+                    override fun onPageSelected(position: Int) {
+                        currentTab = navItems()[position]
+                        renderNavigation(animate = true)
+                    }
+                })
             }
             addView(content)
         }
@@ -163,97 +176,68 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun showTab(tab: Tab, forceRefresh: Boolean = false) {
-        val previous = currentTab
+        val index = navItems().indexOf(tab)
+        if (index < 0) return
         currentTab = tab
+        if (forceRefresh) refreshTab(tab)
+        if (content.currentItem == index) renderNavigation(animate = false)
+        else content.setCurrentItem(index, true)
+    }
+
+    private fun renderNavigation(animate: Boolean) {
         applyUiDirection(window.decorView, content, nav)
-        val hadContent = activeTabView != null
         nav.removeAllViews()
         navItems().forEach { item ->
             nav.addView(navItem(item), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, if (item == currentTab) 1.55f else 1f).apply { marginStart = dp(2); marginEnd = dp(2) })
         }
-        nav.animate().cancel()
-        nav.alpha = if (hadContent) 0.86f else 1f
-        nav.scaleX = if (hadContent) 0.985f else 1f
-        nav.scaleY = if (hadContent) 0.985f else 1f
-        if (hadContent) nav.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(160).setInterpolator(tabInterpolator).start()
-        val view = if (forceRefresh || tabViews[tab] == null) {
-            tabViews.remove(tab)?.let { cached -> content.removeView(cached) }
-            when (tab) {
-                Tab.HOME -> homeView()
-                Tab.SOURCES -> sourcesView()
-                Tab.PROXIES -> proxiesView()
-                Tab.SETTINGS -> settingsView()
-            }.also { created -> tabViews[tab] = created }
-        } else {
-            requireNotNull(tabViews[tab])
+        if (animate) {
+            nav.animate().cancel()
+            nav.alpha = 0.9f
+            nav.scaleX = 0.99f
+            nav.scaleY = 0.99f
+            nav.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(130).setInterpolator(tabInterpolator).start()
+        }
+    }
+
+    private fun buildTab(tab: Tab): View = when (tab) {
+        Tab.HOME -> homeView()
+        Tab.SOURCES -> sourcesView()
+        Tab.PROXIES -> proxiesView()
+        Tab.SETTINGS -> settingsView()
+    }
+
+    private fun refreshTab(tab: Tab) {
+        tabViews.remove(tab)
+        pageContainers[tab]?.let { container ->
+            container.removeAllViews()
+            bindTab(container, tab)
+        }
+    }
+
+    private fun bindTab(container: FrameLayout, tab: Tab) {
+        val view = tabViews[tab] ?: buildTab(tab).also { tabViews[tab] = it }
+        if (view.parent !== container) {
+            (view.parent as? ViewGroup)?.removeView(view)
+            container.removeAllViews()
+            container.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         }
         applyUiDirection(view)
-        if (activeTabView !== view) {
-            content.removeAllViews()
-            val towardEnd = tab.ordinal > previous.ordinal
-            val direction = if (ui.isRtl) if (towardEnd) -1 else 1 else if (towardEnd) 1 else -1
-            view.alpha = if (hadContent) 0f else 1f
-            view.translationX = if (hadContent) dp(18).toFloat() * direction else 0f
-            content.addView(view)
-            if (hadContent) view.animate().alpha(1f).translationX(0f).setDuration(220).setInterpolator(tabInterpolator).start()
-            activeTabView = view
-        }
     }
 
-    private fun switchTabBySwipe(deltaX: Float) {
-        val tabs = navItems()
-        val currentIndex = tabs.indexOf(currentTab)
-        val nextIndex = currentIndex + if (deltaX < 0f) 1 else -1
-        if (nextIndex in tabs.indices) showTab(tabs[nextIndex])
-    }
+    private inner class TabPagerAdapter : RecyclerView.Adapter<TabPagerAdapter.PageHolder>() {
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PageHolder = PageHolder(FrameLayout(parent.context).apply {
+            layoutParams = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        })
 
-    private inner class TabSwipeFrame(context: Context) : FrameLayout(context) {
-        private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
-        private var downX = 0f
-        private var downY = 0f
-        private var intercepting = false
-
-        override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    downX = event.rawX
-                    downY = event.rawY
-                    intercepting = false
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val dx = event.rawX - downX
-                    val dy = event.rawY - downY
-                    if (!intercepting && abs(dx) > touchSlop && abs(dx) > abs(dy) && !startsOnHorizontalGestureView(downX, downY)) {
-                        intercepting = true
-                        return true
-                    }
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> intercepting = false
-            }
-            return intercepting
+        override fun onBindViewHolder(holder: PageHolder, position: Int) {
+            val tab = navItems()[position]
+            pageContainers[tab] = holder.container
+            bindTab(holder.container, tab)
         }
 
-        override fun onTouchEvent(event: MotionEvent): Boolean {
-            if (event.actionMasked == MotionEvent.ACTION_UP && intercepting) {
-                val dx = event.rawX - downX
-                if (abs(dx) >= dp(68)) switchTabBySwipe(dx)
-                intercepting = false
-            } else if (event.actionMasked == MotionEvent.ACTION_CANCEL) {
-                intercepting = false
-            }
-            return true
-        }
+        override fun getItemCount() = navItems().size
 
-        private fun startsOnHorizontalGestureView(rawX: Float, rawY: Float): Boolean {
-            val rect = android.graphics.Rect()
-            fun findScrollableChild(view: View): Boolean {
-                val isProxyCardList = view is RecyclerView && view.adapter is ProxyAdapter
-                val isHorizontalControl = view is HorizontalScrollView
-                if ((isProxyCardList || isHorizontalControl) && view.getGlobalVisibleRect(rect) && rect.contains(rawX.toInt(), rawY.toInt())) return true
-                return (view as? ViewGroup)?.let { group -> (0 until group.childCount).any { findScrollableChild(group.getChildAt(it)) } } ?: false
-            }
-            return findScrollableChild(content)
-        }
+        inner class PageHolder(val container: FrameLayout) : RecyclerView.ViewHolder(container)
     }
 
     private fun navItems() = listOf(Tab.HOME, Tab.PROXIES, Tab.SOURCES, Tab.SETTINGS)
@@ -1182,9 +1166,10 @@ class MainActivity : ComponentActivity() {
         }
     }
     private fun invalidateTabCache() {
-        content.removeAllViews()
         tabViews.clear()
-        activeTabView = null
+        pageContainers.values.forEach { it.removeAllViews() }
+        pageContainers.clear()
+        tabPagerAdapter.notifyDataSetChanged()
     }
     private fun color(id: Int) = getColor(id)
     private fun isDarkTheme() = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES

@@ -93,6 +93,7 @@ dependencies {
     implementation("androidx.recyclerview:recyclerview:1.4.0") {
         exclude(group = "androidx.profileinstaller", module = "profileinstaller")
     }
+    implementation("androidx.viewpager2:viewpager2:1.1.0")
     implementation("com.google.zxing:core:3.5.3")
     testImplementation("junit:junit:4.13.2")
 }
