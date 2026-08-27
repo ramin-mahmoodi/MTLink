@@ -20,8 +20,8 @@ android {
         applicationId = "ir.mtlink.client"
         minSdk = 24
         targetSdk = 35
-        versionCode = 26
-        versionName = "1.0.0"
+        versionCode = 27
+        versionName = "1.0.1"
     }
 
     signingConfigs {

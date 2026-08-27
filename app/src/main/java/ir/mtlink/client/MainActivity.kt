@@ -162,9 +162,11 @@ class MainActivity : ComponentActivity() {
         navItems().forEach { item ->
             nav.addView(navItem(item), LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT).apply { marginStart = dp(1); marginEnd = dp(1) })
         }
-        nav.alpha = if (hadContent) 0.72f else 1f
-        nav.translationY = if (hadContent) dp(5).toFloat() else 0f
-        if (hadContent) nav.animate().alpha(1f).translationY(0f).setDuration(180).setInterpolator(tabInterpolator).start()
+        nav.animate().cancel()
+        nav.alpha = if (hadContent) 0.86f else 1f
+        nav.scaleX = if (hadContent) 0.985f else 1f
+        nav.scaleY = if (hadContent) 0.985f else 1f
+        if (hadContent) nav.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(160).setInterpolator(tabInterpolator).start()
         val view = when (tab) {
             Tab.HOME -> homeView()
             Tab.SOURCES -> sourcesView()
@@ -204,12 +206,20 @@ class MainActivity : ComponentActivity() {
             minimumWidth = dp(48)
             setPadding(dp(12), 0, dp(12), 0)
             applyUiDirection(this)
+            alpha = if (selected) 0f else 1f
             background = rounded(
                 if (selected) color(R.color.mt_primary_soft) else Color.TRANSPARENT,
                 if (selected) color(R.color.mt_border) else Color.TRANSPARENT,
                 23,
             )
             setOnClickListener { showTab(tab) }
+            setOnTouchListener { view, event ->
+                when (event.actionMasked) {
+                    android.view.MotionEvent.ACTION_DOWN -> view.animate().scaleX(0.94f).scaleY(0.94f).setDuration(75).start()
+                    android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> view.animate().scaleX(1f).scaleY(1f).setDuration(140).setInterpolator(tabInterpolator).start()
+                }
+                false
+            }
             val icon = ImageView(context).apply {
                 setImageResource(iconRes)
                 setColorFilter(if (selected) color(R.color.mt_primary_light) else color(R.color.mt_muted))
@@ -225,8 +235,9 @@ class MainActivity : ComponentActivity() {
                 }
                 addView(label, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(6) })
                 post {
-                    ValueAnimator.ofInt(0, dp(70)).apply {
-                        duration = 220
+                    animate().alpha(1f).setDuration(110).setInterpolator(tabInterpolator).start()
+                    ValueAnimator.ofInt(0, dp(74)).apply {
+                        duration = 180
                         interpolator = tabInterpolator
                         addUpdateListener { animator ->
                             (label.layoutParams as LinearLayout.LayoutParams).apply {
@@ -237,10 +248,9 @@ class MainActivity : ComponentActivity() {
                         }
                         start()
                     }
-                    scaleX = 0.94f
-                    scaleY = 0.94f
-                    animate().scaleX(1f).scaleY(1f).setDuration(220).setInterpolator(tabInterpolator).start()
                 }
+            } else {
+                post { animate().alpha(1f).setDuration(110).setInterpolator(tabInterpolator).start() }
             }
         }
     }
