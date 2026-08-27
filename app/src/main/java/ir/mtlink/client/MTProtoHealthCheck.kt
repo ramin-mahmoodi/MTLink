@@ -23,14 +23,13 @@ object MTProtoHealthCheck {
     private val secureRandom = SecureRandom()
 
     private enum class SecretKind { STANDARD, DD, EE, EXTENDED, INVALID }
-    private data class ParsedSecret(val bytes: ByteArray, val kind: SecretKind)
+    private data class ParsedSecret(val bytes: ByteArray, val kind: SecretKind, val fakeTlsDomain: String? = null)
     private data class Session(val init: ByteArray, val encryptor: Cipher, val decryptor: Cipher)
 
     fun test(proxy: ProxyRecord, timeoutSeconds: Int): ProxyRecord {
         val startedAt = System.nanoTime()
         val parsed = parseSecret(proxy.secret.orEmpty())
         if (parsed == null) return failed(proxy, startedAt, "MTProto secret نامعتبر است")
-        if (parsed.kind == SecretKind.EE) return testTcpOnly(proxy, timeoutSeconds, startedAt)
         val timeoutMillis = MTLinkStore.normalizeTestTimeout(timeoutSeconds) * 1_000
         val deadline = System.nanoTime() + timeoutMillis * 1_000_000L
         val errors = mutableListOf<String>()
@@ -41,15 +40,15 @@ object MTProtoHealthCheck {
                 Socket().use { socket ->
                     socket.connect(InetSocketAddress(proxy.host, proxy.port), remaining)
                     socket.soTimeout = ((deadline - System.nanoTime()) / 1_000_000L).toInt().coerceAtLeast(1)
+                    val fakeTls = parsed.fakeTlsDomain?.let { FakeTlsTransport(socket, parsed.bytes, it).also(FakeTlsTransport::handshake) }
+                    val write: (ByteArray) -> Unit = fakeTls?.let { transport -> { value -> transport.write(value) } }
+                        ?: { value -> socket.getOutputStream().write(value); socket.getOutputStream().flush() }
+                    val read: (Int) -> ByteArray = fakeTls?.let { transport -> transport::readExact } ?: { size -> readExact(socket, size) }
                     val session = makeSession(parsed.bytes, dcId)
-                    socket.getOutputStream().apply {
-                        write(session.init)
-                        val nonce = ByteArray(16).also(secureRandom::nextBytes)
-                        val request = makeReqPqMulti(nonce)
-                        write(session.encryptor.update(framePaddedIntermediate(request)))
-                        flush()
-                        validateResPq(readPaddedFrame(socket, session.decryptor), nonce)
-                    }
+                    write(session.init)
+                    val nonce = ByteArray(16).also(secureRandom::nextBytes)
+                    write(session.encryptor.update(framePaddedIntermediate(makeReqPqMulti(nonce))))
+                    validateResPq(readPaddedFrame(read, session.decryptor), nonce)
                 }
                 return proxy.copy(
                     status = ProxyStatus.REACHABLE,
@@ -72,22 +71,6 @@ object MTProtoHealthCheck {
         true
     }.getOrDefault(false)
 
-    private fun testTcpOnly(proxy: ProxyRecord, timeoutSeconds: Int, startedAt: Long): ProxyRecord {
-        val timeoutMillis = MTLinkStore.normalizeTestTimeout(timeoutSeconds) * 1_000
-        return try {
-            Socket().use { it.connect(InetSocketAddress(proxy.host, proxy.port), timeoutMillis) }
-            proxy.copy(
-                status = ProxyStatus.REACHABLE,
-                latencyMs = elapsedMillis(startedAt),
-                testedAt = System.currentTimeMillis(),
-                lastError = null,
-                verification = ProxyVerification.TCP_ONLY,
-            )
-        } catch (error: Exception) {
-            failed(proxy, startedAt, error.message?.take(120) ?: "اتصال برقرار نشد")
-        }
-    }
-
     private fun failed(proxy: ProxyRecord, startedAt: Long, reason: String) = proxy.copy(
         status = ProxyStatus.UNREACHABLE,
         latencyMs = null,
@@ -107,7 +90,7 @@ object MTProtoHealthCheck {
         return when {
             raw.size == 16 -> ParsedSecret(raw, SecretKind.STANDARD)
             raw.size >= 17 && (raw[0].toInt() and 0xFF) == 0xDD -> ParsedSecret(raw.copyOfRange(1, 17), SecretKind.DD)
-            raw.size >= 17 && (raw[0].toInt() and 0xFF) == 0xEE -> ParsedSecret(raw.copyOfRange(1, 17), SecretKind.EE)
+            raw.size >= 17 && (raw[0].toInt() and 0xFF) == 0xEE -> ParsedSecret(raw.copyOfRange(1, 17), SecretKind.EE, extractFakeTlsDomain(raw.copyOfRange(17, raw.size)))
             raw.size > 16 -> ParsedSecret(raw.copyOfRange(0, 16), SecretKind.EXTENDED)
             else -> null
         }
@@ -141,10 +124,15 @@ object MTProtoHealthCheck {
         return littleEndian(4 + message.size + padding.size).putInt(message.size + padding.size).put(message).put(padding).array()
     }
 
-    private fun readPaddedFrame(socket: Socket, decryptor: Cipher): ByteArray {
-        val frameLength = byteBuffer(decryptor.update(readExact(socket, 4)), 0).int and 0x7FFFFFFF
+    private fun extractFakeTlsDomain(value: ByteArray): String {
+        val text = value.decodeToString().takeWhile { it.isLetterOrDigit() || it == '.' || it == '-' }
+        return text.takeIf { it.isNotBlank() } ?: "www.google.com"
+    }
+
+    private fun readPaddedFrame(read: (Int) -> ByteArray, decryptor: Cipher): ByteArray {
+        val frameLength = byteBuffer(decryptor.update(read(4)), 0).int and 0x7FFFFFFF
         require(frameLength in 1..MAX_FRAME_SIZE) { "طول پاسخ Telegram معتبر نیست" }
-        return decryptor.update(readExact(socket, frameLength))
+        return decryptor.update(read(frameLength))
     }
 
     private fun readExact(socket: Socket, size: Int): ByteArray {

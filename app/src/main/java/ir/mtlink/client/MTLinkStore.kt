@@ -85,17 +85,21 @@ class MTLinkStore(context: Context) {
         put("favorite", proxy.favorite); put("countryCode", proxy.countryCode); put("verification", proxy.verification.name)
     }
 
-    private fun proxyFromJson(value: JSONObject) = ProxyRecord(
+    private fun proxyFromJson(value: JSONObject): ProxyRecord {
+        val verification = runCatching { ProxyVerification.valueOf(value.optString("verification")) }.getOrDefault(ProxyVerification.NONE)
+        val legacyTcpOnly = verification == ProxyVerification.TCP_ONLY
+        return ProxyRecord(
         id = value.optString("id"),
         protocol = runCatching { ProxyProtocol.valueOf(value.optString("protocol")) }.getOrDefault(ProxyProtocol.MTPROTO),
         host = value.optString("host"), port = value.optInt("port"), secret = value.optString("secret").takeIf { it.isNotBlank() },
         sourceId = value.optString("sourceId"), fetchedAt = value.optLong("fetchedAt"),
-        status = runCatching { ProxyStatus.valueOf(value.optString("status")) }.getOrDefault(ProxyStatus.UNTESTED),
-        latencyMs = value.optLong("latencyMs").takeIf { value.has("latencyMs") }, testedAt = value.optLong("testedAt"),
+        status = if (legacyTcpOnly) ProxyStatus.UNTESTED else runCatching { ProxyStatus.valueOf(value.optString("status")) }.getOrDefault(ProxyStatus.UNTESTED),
+        latencyMs = value.optLong("latencyMs").takeIf { value.has("latencyMs") && !legacyTcpOnly }, testedAt = if (legacyTcpOnly) 0 else value.optLong("testedAt"),
         lastError = value.optString("lastError").takeIf { it.isNotBlank() }, favorite = value.optBoolean("favorite", false),
         countryCode = value.optString("countryCode").takeIf { it.length == 2 }?.uppercase(),
-        verification = runCatching { ProxyVerification.valueOf(value.optString("verification")) }.getOrDefault(ProxyVerification.NONE),
+        verification = if (legacyTcpOnly) ProxyVerification.NONE else verification,
     )
+    }
 
     private fun defaultSources(): List<SourceDefinition> {
         val base = "https://raw.githubusercontent.com/V2RAYCONFIGSPOOL/TELEGRAM_PROXY_SUB/refs/heads/main"

@@ -146,7 +146,6 @@ class ProxyAdapter(
         val (label, color) = when (proxy.status) {
             ProxyStatus.REACHABLE -> when (proxy.verification) {
                 ProxyVerification.MTPROTO_PROTOCOL -> (proxy.latencyMs?.let { "$it ms" } ?: ui.of("Telegram", "Telegram")) to ContextCompat.getColor(context, R.color.mt_success)
-                ProxyVerification.TCP_ONLY -> ui.of("فقط TCP", "TCP only") to ContextCompat.getColor(context, R.color.mt_accent_amber)
                 else -> (proxy.latencyMs?.let { "$it ms" } ?: ui.of("در دسترس", "Ready")) to ContextCompat.getColor(context, R.color.mt_success)
             }
             ProxyStatus.UNREACHABLE -> ui.of("ناموفق", "Failed") to ContextCompat.getColor(context, R.color.mt_danger)
@@ -160,7 +159,6 @@ class ProxyAdapter(
 
     private fun statusCopy(proxy: ProxyRecord): String = when {
         proxy.verification == ProxyVerification.MTPROTO_PROTOCOL -> ui.of("تأییدشده توسط Telegram", "Telegram verified")
-        proxy.verification == ProxyVerification.TCP_ONLY -> ui.of("Fake-TLS؛ فقط اتصال TCP", "Fake-TLS; TCP only")
         proxy.verification == ProxyVerification.SOCKS5_HANDSHAKE -> ui.of("handshake تأیید شد", "Handshake verified")
         proxy.favorite -> ui.of("علاقه‌مندی", "Favorite")
         proxy.testedAt > 0 && proxy.status == ProxyStatus.REACHABLE -> ui.of("بررسی‌شده", "Checked")
