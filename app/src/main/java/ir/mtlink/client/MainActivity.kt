@@ -1107,6 +1107,8 @@ class MainActivity : ComponentActivity() {
         val track = FrameLayout(context).apply { background = rounded(color(R.color.mt_surface_soft), Color.TRANSPARENT, 5) }
         val fill = View(context).apply { background = rounded(color(R.color.mt_primary), Color.TRANSPARENT, 5) }
         track.addView(fill, FrameLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, if (ui.isRtl) Gravity.RIGHT else Gravity.LEFT))
+        // fixed: A ViewPager page can be attached before it has a width; update once it receives layout instead of reposting indefinitely.
+        track.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> renderTestProgress() }
         addView(top)
         addView(track, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(8)).apply { topMargin = dp(11) })
         progressWidgets[owner] = ProgressWidgets(this, headline, track, fill, progress)
@@ -1158,9 +1160,7 @@ class MainActivity : ComponentActivity() {
         progressWidgets.values.toList().forEach { widget ->
             widget.headline.text = progressHeadline()
             widget.copy.text = "$completed/$total · ${(fraction * 100).toInt()}%"
-            if (widget.track.width == 0) {
-                widget.track.post { renderTestProgress() }
-            } else {
+            if (widget.track.width > 0) {
                 widget.fill.layoutParams = FrameLayout.LayoutParams((widget.track.width * fraction).toInt(), ViewGroup.LayoutParams.MATCH_PARENT, if (ui.isRtl) Gravity.RIGHT else Gravity.LEFT)
             }
         }
