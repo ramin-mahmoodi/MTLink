@@ -73,7 +73,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var tabPagerAdapter: TabPagerAdapter
     private var navSelectionAnimator: ValueAnimator? = null
     // iOS-like easing: visible horizontal travel without an abrupt end-jump.
-    private val tabInterpolator = PathInterpolator(0.22f, 0.62f, 0.28f, 1f)
+    private val tabInterpolator = PathInterpolator(0.18f, 0.86f, 0.28f, 1f)
 
     private enum class Tab { HOME, PROXIES, SOURCES, SETTINGS }
     private enum class SourceFilter { ALL, ENABLED, ERRORS }
@@ -160,8 +160,12 @@ class MainActivity : ComponentActivity() {
                 }
                 registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
                     override fun onPageSelected(position: Int) {
-                        currentTab = navItems()[position]
-                        renderNavigation(animate = true)
+                        val selectedTab = navItems()[position]
+                        // A tap already started the capsule animation before ViewPager2 settles.
+                        // Do not cancel and restart it when this callback arrives.
+                        val capsuleIsSliding = currentTab == selectedTab && navSelectionAnimator?.isRunning == true
+                        currentTab = selectedTab
+                        renderNavigation(animate = !capsuleIsSliding)
                     }
                 })
             }
@@ -315,7 +319,7 @@ class MainActivity : ComponentActivity() {
         navSelectionAnimator?.cancel()
         if (animate && nav.width > 0) {
             navSelectionAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-                duration = 320
+                duration = 360
                 interpolator = tabInterpolator
                 addUpdateListener { applyAt(it.animatedValue as Float) }
                 start()
