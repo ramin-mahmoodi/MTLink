@@ -1,5 +1,6 @@
 package ir.mtlink.client
 
+import android.animation.ValueAnimator
 import android.app.AlertDialog
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -116,26 +117,36 @@ class MainActivity : ComponentActivity() {
     private fun buildRoot(): View {
         val rootDirection = if (ui.isRtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
         val frame = FrameLayout(this).apply { layoutDirection = rootDirection }
-        val base = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
+        val base = FrameLayout(this).apply {
             layoutDirection = rootDirection
             setBackgroundColor(color(R.color.mt_background))
             content = FrameLayout(context).apply {
                 layoutDirection = rootDirection
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
+                clipToPadding = false
+                layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             }
-            nav = LinearLayout(context).apply {
-                orientation = LinearLayout.HORIZONTAL; layoutDirection = rootDirection; gravity = Gravity.CENTER; setPadding(dp(10), dp(8), dp(10), dp(12))
-                setBackgroundColor(color(R.color.mt_surface_deep)); elevation = dp(8).toFloat()
-            }
-            addView(content); addView(nav, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(76)))
+            addView(content)
+        }
+        nav = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutDirection = rootDirection
+            gravity = Gravity.CENTER
+            background = rounded(color(R.color.mt_surface_raised), color(R.color.mt_border), 28)
+            setPadding(dp(6), dp(5), dp(6), dp(5))
+            elevation = dp(12).toFloat()
         }
         loadingOverlay = LoadingOverlay(this)
         frame.addView(base, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        frame.addView(nav, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(64), Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL))
         frame.addView(loadingOverlay, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         ViewCompat.setOnApplyWindowInsetsListener(frame) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            base.setPadding(0, bars.top, 0, bars.bottom)
+            base.setPadding(0, bars.top, 0, 0)
+            content.setPadding(0, 0, 0, dp(92) + bars.bottom)
+            (nav.layoutParams as FrameLayout.LayoutParams).apply {
+                bottomMargin = bars.bottom + dp(10)
+                nav.layoutParams = this
+            }
             insets
         }
         ViewCompat.requestApplyInsets(frame)
@@ -149,10 +160,11 @@ class MainActivity : ComponentActivity() {
         val hadContent = content.childCount > 0
         content.removeAllViews(); nav.removeAllViews()
         navItems().forEach { item ->
-            nav.addView(navItem(item), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply {
-                marginStart = dp(2); marginEnd = dp(2)
-            })
+            nav.addView(navItem(item), LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT).apply { marginStart = dp(1); marginEnd = dp(1) })
         }
+        nav.alpha = if (hadContent) 0.72f else 1f
+        nav.translationY = if (hadContent) dp(5).toFloat() else 0f
+        if (hadContent) nav.animate().alpha(1f).translationY(0f).setDuration(180).setInterpolator(tabInterpolator).start()
         val view = when (tab) {
             Tab.HOME -> homeView()
             Tab.SOURCES -> sourcesView()
@@ -173,23 +185,64 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun navItems() = listOf(Tab.HOME, Tab.PROXIES, Tab.SOURCES, Tab.SETTINGS)
-    private fun navItem(tab: Tab) = TextView(this).apply {
-        text = when (tab) {
+    private fun navItem(tab: Tab): View {
+        val selected = tab == currentTab
+        val title = when (tab) {
             Tab.HOME -> t("خانه", "Home")
             Tab.SOURCES -> t("منابع", "Sources")
             Tab.PROXIES -> t("پراکسی‌ها", "Proxies")
             Tab.SETTINGS -> t("تنظیمات", "Settings")
         }
-        gravity = Gravity.CENTER; textSize = 12f
-        typeface = MTFonts.face(this@MainActivity, true); includeFontPadding = true
-        setTextColor(if (tab == currentTab) color(R.color.mt_primary_light) else color(R.color.mt_muted))
-        setPadding(dp(4), dp(4), dp(4), dp(4))
-        background = rounded(
-            if (tab == currentTab) color(R.color.mt_primary_soft) else Color.TRANSPARENT,
-            if (tab == currentTab) color(R.color.mt_border) else Color.TRANSPARENT,
-            15,
-        )
-        setOnClickListener { showTab(tab) }
+        val iconRes = when (tab) {
+            Tab.HOME -> R.drawable.ic_nav_home
+            Tab.PROXIES -> R.drawable.ic_nav_proxies
+            Tab.SOURCES -> R.drawable.ic_nav_sources
+            Tab.SETTINGS -> R.drawable.ic_nav_settings
+        }
+        return LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            minimumWidth = dp(48)
+            setPadding(dp(12), 0, dp(12), 0)
+            applyUiDirection(this)
+            background = rounded(
+                if (selected) color(R.color.mt_primary_soft) else Color.TRANSPARENT,
+                if (selected) color(R.color.mt_border) else Color.TRANSPARENT,
+                23,
+            )
+            setOnClickListener { showTab(tab) }
+            val icon = ImageView(context).apply {
+                setImageResource(iconRes)
+                setColorFilter(if (selected) color(R.color.mt_primary_light) else color(R.color.mt_muted))
+                contentDescription = title
+            }
+            addView(icon, LinearLayout.LayoutParams(dp(22), dp(22)))
+            if (selected) {
+                val label = label(title, 12, color(R.color.mt_primary_light), true).apply {
+                    alpha = 0f
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    gravity = Gravity.CENTER_VERTICAL
+                }
+                addView(label, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(6) })
+                post {
+                    ValueAnimator.ofInt(0, dp(70)).apply {
+                        duration = 220
+                        interpolator = tabInterpolator
+                        addUpdateListener { animator ->
+                            (label.layoutParams as LinearLayout.LayoutParams).apply {
+                                width = animator.animatedValue as Int
+                                label.layoutParams = this
+                            }
+                            label.alpha = animator.animatedFraction
+                        }
+                        start()
+                    }
+                    scaleX = 0.94f
+                    scaleY = 0.94f
+                    animate().scaleX(1f).scaleY(1f).setDuration(220).setInterpolator(tabInterpolator).start()
+                }
+            }
+        }
     }
 
     private fun homeView(): View = scroll {
