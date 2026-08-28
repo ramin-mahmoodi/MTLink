@@ -832,8 +832,7 @@ class MainActivity : ComponentActivity() {
                     updateFetchProgress(1, source.title)
                     finishFetchProgress()
                     toast(if (added > 0) t("$added پراکسی جدید دریافت شد", "$added new proxies fetched") else t("پراکسی تازه‌ای پیدا نشد", "No new proxies found"))
-                    refreshProxyResultsAfterFetch()
-                    refreshSourcesInPlace()
+                    refreshResultsAfterFetch()
                 }
             } catch (error: Exception) {
                 store.saveSources(store.sources().map {
@@ -902,10 +901,8 @@ class MainActivity : ComponentActivity() {
                     finishFetchProgress()
                     toast(if (added > 0) t("$added پراکسی جدید دریافت شد", "$added new proxies fetched") else t("پراکسی تازه‌ای پیدا نشد", "No new proxies found"))
                     if (errors > 0) toast(t("$errors منبع در دسترس نبود", "$errors sources were unavailable"))
-                    refreshProxyResultsAfterFetch()
+                    refreshResultsAfterFetch()
                     if (prefs.autoTestAfterFetch && persisted.isNotEmpty()) testAll()
-                    else if (currentTab == Tab.SOURCES) refreshSourcesInPlace()
-                    else if (currentTab != Tab.PROXIES) showTab(currentTab, forceRefresh = true)
                 }
             } catch (error: Throwable) {
                 postUi {
@@ -982,11 +979,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun refreshProxyResultsAfterFetch() {
-        // Freshly fetched entries are always visible without requiring a manual tap on All.
+    private fun refreshResultsAfterFetch() {
+        // Fetch writes proxies and source status to one store. Rebuild every cached tab from that
+        // same state so Home, Proxies, and Sources never show different generations of the data.
         proxyFilter = null
         favoritesOnly = false
+        refreshTab(Tab.HOME)
         refreshTab(Tab.PROXIES)
+        refreshTab(Tab.SOURCES)
     }
 
     private fun refreshProxyResultsAfterTest() {
