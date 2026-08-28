@@ -6,10 +6,10 @@
 
 **Collect, test and manage Telegram proxies — offline, entirely on your device**
 
-[![Android](https://img.shields.io/badge/Platform-Android%2024%2B-3DDC84?logo=android&logoColor=white)](https://developer.android.com)
+[![Android](https://img.shields.io/badge/Platform-Android%208%E2%80%9316-3DDC84?logo=android&logoColor=white)](https://developer.android.com)
 [![Kotlin](https://img.shields.io/badge/Language-Kotlin-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![License](https://img.shields.io/badge/License-MIT-blue)](#-license)
-[![Version](https://img.shields.io/badge/Version-1.0.0-orange)](https://github.com/ramin-mahmoodi/MTLink/releases)
+[![Version](https://img.shields.io/badge/Version-1.0.2-orange)](https://github.com/ramin-mahmoodi/MTLink/releases/tag/v1.0.2)
 
 [**English**](#-english) · [**فارسی**](#-فارسی)
 
